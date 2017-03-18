@@ -4205,6 +4205,36 @@ t.pickupSounds = juiceSounds
 t.fallSounds = ["juiceFall"]
 t.style = 'agent'
 
+# Yue Start #
+# IronMan ####################################
+t = Appearance("Ironman")
+t.colorTexture = "ironmanColor"
+t.colorMaskTexture = "ironmanColorMask"
+t.defaultColor = (1,0,0)
+t.defaultHighlight = (1,0.7,0.0)
+t.iconTexture = "ironmanIcon"
+t.iconMaskTexture = "ironmanIconColorMask"
+t.headModel =     "ironmanHead"
+t.torsoModel =    "ironmanTorso"
+t.pelvisModel =   "ironmanPelvis"
+t.upperArmModel = "ironmanUpperArm"
+t.foreArmModel =  "ironmanForeArm"
+t.handModel =     "ironmanHand"
+t.upperLegModel = "ironmanUpperLeg"
+t.lowerLegModel = "ironmanLowerLeg"
+t.toesModel =     "ironmanToes"
+agentSounds =    ['agent1','agent2','agent3','agent4']
+agentHitSounds = ['agentHit1','agentHit2']
+t.attackSounds = agentSounds
+t.jumpSounds = agentSounds
+t.impactSounds = agentHitSounds
+t.deathSounds=["agentDeath"]
+t.pickupSounds = agentSounds
+t.fallSounds=["agentFall"]
+t.style = 'agent'
+
+# Yue End #
+
 # Klayman - WORK IN PROGRESS###################################
 '''
 t = Appearance("Klayman")
