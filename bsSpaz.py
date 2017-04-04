@@ -1155,10 +1155,14 @@ class Spaz(bs.Actor):
                     self._multiBombWearOffFlashTimer = bs.Timer(gPowerupWearOffTime-2000,bs.WeakCall(self._blastBuffWearOffFlash))
                     self._multiBombWearOffTimer = bs.Timer(gPowerupWearOffTime,bs.WeakCall(self._blastBuffWearOff))
             elif m.powerupType == 'landMines':
-                self.setGrenadeCount(min(0,4))
-                self.setHealBombCount(min(0,2))
-                self.setHijumpCount(min(0,6))
-                self.setLandMineCount(min(self.landMineCount+3,3))
+                if self.hasSuperpower('landMine'):
+                    self.setLandMineCount(self.landMineCount+3)
+                else:
+                    if not self.hasSuperpower('LayonHands'):
+                        self.setHealBombCount(min(0,2))
+                    self.setGrenadeCount(min(0,4))
+                    self.setHijumpCount(min(0,6))
+                    self.setLandMineCount(min(self.landMineCount+3,3))
                 if bs.getConfig().get('Powerup Popups', True):
                     bsUtils.PopupText((bs.Lstr(resource='landMine')),
                                             color=(0.1,0.7,0),
@@ -1185,10 +1189,14 @@ class Spaz(bs.Actor):
                                             scale=self.scale,
                                             position=self.node.position).autoRetain()
             elif m.powerupType == 'healBombs':
-                self.setGrenadeCount(min(0,4))
-                self.setLandMineCount(min(0,3))
-                self.setHijumpCount(min(0,6))
-                self.setHealBombCount(min(self.healBombCount+1,2))
+                if self.hasSuperpower('LayonHands'):
+                    self.setHealBombCount(self.healBombCount+2)
+                else:
+                    if not self.hasSuperpower('landMine'):
+                        self.setLandMineCount(min(0,3))
+                    self.setGrenadeCount(min(0,4))
+                    self.setHijumpCount(min(0,6))
+                    self.setHealBombCount(min(self.healBombCount+1,2))
                 if bs.getConfig().get('Powerup Popups', True):
                     bsUtils.PopupText((bs.Lstr(resource='healBomb')),
                                             color=(1,0.4,0.7),
@@ -2027,7 +2035,7 @@ class Spaz(bs.Actor):
 
     def addHealBomb(self):
         if not self.node.exists(): return
-        if self.healBombCount == 3:
+        if self.healBombCount >= 3:
             self.setHealBombCount(0)
             self.setinvincibleBombCount(1)
         else:
@@ -2293,6 +2301,8 @@ class Spaz(bs.Actor):
                 self.node.counterTexture = bs.Powerup.getFactory().texGrenades
             else:
                 self.node.counterText = ''
+                if self.invincibleCount == 1:
+                    self.setinvincibleBombCount(1)
 
     def setHijumpCount(self,count):
         """
@@ -2305,6 +2315,8 @@ class Spaz(bs.Actor):
                 self.node.counterTexture = bs.Powerup.getFactory().texHijump
             else:
                 self.node.counterText = ''
+                if self.invincibleCount == 1:
+                    self.setinvincibleBombCount(1)
 
     def setLandMineCount(self,count):
         """
@@ -2317,6 +2329,8 @@ class Spaz(bs.Actor):
                 self.node.counterTexture = bs.Powerup.getFactory().texLandMines
             else:
                 self.node.counterText = ''
+                if self.invincibleCount == 1:
+                    self.setinvincibleBombCount(1)
 
     def setHealBombCount(self,count):
         """
@@ -2329,6 +2343,8 @@ class Spaz(bs.Actor):
                 self.node.counterTexture = bs.Powerup.getFactory().texHealBombs
             else:
                 self.node.counterText = ''
+                if self.invincibleCount == 1:
+                    self.setinvincibleBombCount(1)
 
     def setinvincibleBombCount(self,count):
         """

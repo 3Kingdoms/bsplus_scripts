@@ -55,7 +55,7 @@ superPowerDict = {
     },
     'Spy':{
         'superpower':'landMine',
-        'cooldownTime':10000,
+        'cooldownTime':8000,
         'canAcceptPowerups':True,
         'bombCount':1,
         'hitPointsMax':1000,
@@ -100,7 +100,7 @@ superPowerDict = {
     },
     'Milk':{
         'superpower':'LayonHands',
-        'cooldownTime':8000,
+        'cooldownTime':6000,
         'canAcceptPowerups':True,
         'bombCount':1,
         'hitPointsMax':1000,
@@ -109,7 +109,7 @@ superPowerDict = {
     },
     'Frosty':{
         'superpower':'superice',
-        'cooldownTime':5000,
+        'cooldownTime':7000,
         'canAcceptPowerups':False,
         'bombCount':1,
         'hitPointsMax':1000,
@@ -118,7 +118,7 @@ superPowerDict = {
     },
     'Ronnie':{
         'superpower':'superfire',
-        'cooldownTime':5000,
+        'cooldownTime':7000,
         'canAcceptPowerups':False,
         'bombCount':1,
         'hitPointsMax':1000,

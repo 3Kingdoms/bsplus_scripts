@@ -261,10 +261,10 @@ def getDefaultPowerupDistribution():
     if not isinstance(bs.getSession(),bs.CoopSession):
         if (pd == 'JRMP'):
             return (('tripleBombs',0),
-                    ('iceBombs',1),
+                    ('iceBombs',0),
                     ('punch',0),
                     ('impactBombs',0),
-                    ('landMines',0),
+                    ('landMines',1),
                     ('stickyBombs',0),
                     ('combatBombs',0),
                     ('dynamitePack',0),
@@ -272,8 +272,8 @@ def getDefaultPowerupDistribution():
                     ('knockerBombs',0),
                     ('grenades',0),
                     ('blastBuff',0),
-                    ('fireBombs',1),
-                    ('healBombs',0),
+                    ('fireBombs',0),
+                    ('healBombs',1),
                     ('shield',0),
                     ('overdrive',0),
                     ('health',0),
