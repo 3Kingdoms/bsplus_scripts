@@ -11,7 +11,7 @@ gDidInitialTransition = False
 
 gStartTime = time.time()
 
-    
+
 class MainMenuActivity(bs.Activity):
 
     def __init__(self, settings={}):
@@ -27,11 +27,11 @@ class MainMenuActivity(bs.Activity):
 
         self._logoNode = None
         self._customLogoTexName = None
-        
+
         self._wordActors = []
 
         env = bs.getEnvironment()
-        
+
         # FIXME - shouldn't be doing things conditionally based on whether the host is vr mode or not
         # (clients may not be or vice versa) - any differences need to happen at the engine level
         # so everyone sees things in their own optimal way
@@ -58,7 +58,7 @@ class MainMenuActivity(bs.Activity):
                                                          'position':(-600,10),
                                                          'vrDepth':-10,
                                                          'text':'Modpack created by TheMikirog'}))
-        
+
         # throw up some text that only clients can see so they know that the host is navigating menus
         # while they're just staring at an empty-ish screen..
         self._hostIsNavigatingText = bs.NodeActor(bs.newNode('text',
@@ -163,7 +163,7 @@ class MainMenuActivity(bs.Activity):
                                                    }))
             if not gDidInitialTransition:
                 bs.animate(self.version.node,'opacity',{2300:0,3000:1.0})
-            
+
         # throw in beta info..
         self.betaInfo = self.betaInfo2 = None
         if env['testBuild'] and not env['kioskMode']:
@@ -200,7 +200,7 @@ class MainMenuActivity(bs.Activity):
             #                                                             '-eric')}))
             #     if not gDidInitialTransition:
             #         bs.animate(self.betaInfo2.node,'opacity',{2300:0,3000:1.0,10000:1.0,11000:0.0})
-            
+
 
         model = bs.getModel('thePadLevel')
         treesModel = bs.getModel('trees')
@@ -214,9 +214,9 @@ class MainMenuActivity(bs.Activity):
         # (load these last since most platforms don't use them..)
         vrBottomFillModel = bs.getModel('thePadVRFillBottom')
         vrTopFillModel = bs.getModel('thePadVRFillTop')
-        
+
         bsGlobals = bs.getSharedObject('globals')
-        
+
         bsGlobals.cameraMode = 'rotate'
 
         if False:
@@ -230,11 +230,11 @@ class MainMenuActivity(bs.Activity):
                                                            'hAlign':'center'}))
             bsGlobals.connectAttr('gameTime',node,'time2')
             node.connectAttr('output',self._fooText.node,'text')
-        
-        
+
+
         tint = (1.1,1.11,1.14)
         bsGlobals.tint = tint
-            
+
         bsGlobals.ambientColor = (1.05,1.06,1.08)
         bsGlobals.vignetteOuter = (0.55,0.55,0.62)
         bsGlobals.vignetteInner = (0.97,0.97,0.99)
@@ -260,7 +260,7 @@ class MainMenuActivity(bs.Activity):
                                                       'colorTexture':testColorTexture,
                                                       'reflection':'soft',
                                                       'reflectionScale':[0.3]}))
-                            
+
 
         self.trees = bs.NodeActor(bs.newNode('terrain',
                                              attrs={'model':treesModel,
@@ -289,7 +289,7 @@ class MainMenuActivity(bs.Activity):
 
         # on the main menu, also show our news..
         class News(object):
-            
+
             def __init__(self,activity):
                 self._valid = True
 
@@ -307,13 +307,13 @@ class MainMenuActivity(bs.Activity):
                 if bsInternal._getAccountState() == 'SIGNED_IN':
                     self._fetchNews()
                     self._fetchTimer = None
-                
+
             def _fetchNews(self):
                 try: launchCount = bs.getConfig()['launchCount']
                 except Exception: launchCount = None
                 global gLastNewsFetchTime
                 gLastNewsFetchTime = time.time()
-                
+
                 #bsUtils.serverGet('bsNews',{'v':'2','lc':launchCount,'b':bs.getEnvironment()['buildNumber'],'t':int(gLastNewsFetchTime-gStartTime)},bs.WeakCall(self._gotNews))
                 env = bs.getEnvironment()
                 bsInternal._newsQuery(args={'v':2,'lc':launchCount,'t':int(gLastNewsFetchTime-gStartTime),'p':env['platform'],'sp':env['subplatform']},callback=bs.WeakCall(self._gotNews))
@@ -321,7 +321,7 @@ class MainMenuActivity(bs.Activity):
             def _changePhrase(self):
 
                 global gLastNewsFetchTime
-                
+
                 # if our news is way out of date, lets re-request it.. otherwise, rotate our phrase
                 if time.time()-gLastNewsFetchTime > 600.0:
                     self._fetchNews()
@@ -363,13 +363,13 @@ class MainMenuActivity(bs.Activity):
                             self._text.node.text = val
 
             def _gotNews(self,data):
-                
+
                 # run this stuff in the context of our activity since we need to make nodes and stuff..
-                # we should fix the serverGet call so it 
+                # we should fix the serverGet call so it
                 activity = self._activity()
                 if activity is None or activity.isFinalized(): return
                 with bs.Context(activity):
-                
+
                     if data is None: return
                     news = str(data['news'])
                     #news = data['news']
@@ -430,7 +430,7 @@ class MainMenuActivity(bs.Activity):
                                                                 'maxWidth':900.0/sc,
                                                                 'position':(0,-10)}))
                     self._changePhrase()
-                    
+
         if not env['kioskMode'] and not env.get('toolbarTest',True):
             self._news = News(self)
 
@@ -458,7 +458,7 @@ class MainMenuActivity(bs.Activity):
                         if not bsUI._showOffer():
                             bs.realTimer(2000,bsUI._showOffer) # try one last time..
                     bs.realTimer(2000,tryAgain)
-            
+
         gDidInitialTransition = True
 
     def _update(self):
@@ -471,7 +471,7 @@ class MainMenuActivity(bs.Activity):
                 self._logoNode.texture = bs.getTexture(customTexture if customTexture is not None else 'logo')
                 self._logoNode.modelOpaque = None if customTexture is not None else bs.getModel('logo')
                 self._logoNode.modelTransparent = None if customTexture is not None else bs.getModel('logoTransparent')
-        
+
         # if language has changed, recreate our logo text/graphics
         l = bs.getLanguage()
         if l != self._language:
@@ -479,7 +479,7 @@ class MainMenuActivity(bs.Activity):
 
             env = bs.getEnvironment()
 
-            
+
             y = 20
             gScale = 1.1
             self._wordActors = []
@@ -493,7 +493,7 @@ class MainMenuActivity(bs.Activity):
                 delay = baseDelay
                 delayInc = 20
 
-                
+
             # we draw higher in kiosk mode (make sure to test this when making adjustments)
             # for now we're hard-coded for a few languages.. should maybe look into generalizing this?..
             if bs.getLanguage() == 'Chinese':
@@ -502,21 +502,21 @@ class MainMenuActivity(bs.Activity):
                 spacing = 85*gScale
                 yExtra = 80 if env['kioskMode'] else 0
 
-                
+
                 self._makeLogo(x-110+50,113+y+1.2*yExtra,0.34*gScale,delay=baseDelay+100,customTexture='chTitleChar1',jitterScale=2.0,vrDepthOffset=-30)
-                
+
                 x += spacing; delay += delayInc
                 self._makeLogo(x-10+50,110+y+1.2*yExtra,0.31*gScale,delay=baseDelay+150,customTexture='chTitleChar2',jitterScale=2.0,vrDepthOffset=-30)
                 x += 2.0 * spacing; delay += delayInc
-                
+
                 self._makeLogo(x+180-140,110+y+1.2*yExtra,0.3*gScale,delay=baseDelay+250,customTexture='chTitleChar3',jitterScale=2.0,vrDepthOffset=-30)
                 x += spacing; delay += delayInc
                 self._makeLogo(x+241-120,110+y+1.2*yExtra,0.31*gScale,delay=baseDelay+300,customTexture='chTitleChar4',jitterScale=2.0,vrDepthOffset=-30)
                 x += spacing; delay += delayInc
                 self._makeLogo(x+300-90,105+y+1.2*yExtra,0.34*gScale,delay=baseDelay+350,customTexture='chTitleChar5',jitterScale=2.0,vrDepthOffset=-30)
-                
+
                 self._makeLogo(baseX+155, 146+y+1.2*yExtra, 0.28*gScale, delay=baseDelay+200, rotate=-7)
-                
+
             else:
                 baseX = -170
                 x = baseX-20
@@ -547,7 +547,7 @@ class MainMenuActivity(bs.Activity):
 
                 self._makeLogo(baseX-28,125+y+1.2*yExtra,0.32*gScale,delay=baseDelay)
 
-                
+
 
     def _makeWord(self, word, x, y, scale=1.0, delay=0, vrDepthOffset=0, shadow=False):
 
@@ -587,7 +587,7 @@ class MainMenuActivity(bs.Activity):
             else: c = None
             if shadow: c2 = bs.newNode("combine",owner=wordShadowObj.node,attrs={'size':2})
             else: c2 = None
-                
+
             if not shadow:
                 c.connectAttr('output',wordObj.node,'position')
             if shadow:
@@ -621,12 +621,16 @@ class MainMenuActivity(bs.Activity):
             bs.animate(wordShadowObj.node,"projectScale",{delay:0.0, delay+100:scale*1.1, delay+200:scale})
 
     def _getCustomLogoTexName(self):
-        if bsInternal._getAccountMiscReadVal('easter',False):
-            return 'logoEaster'
-        else:
-            return None
-                
-        
+        ### Bacon added
+        return None
+        # Original
+        # if bsInternal._getAccountMiscReadVal('easter',False):
+        #     return 'logoEaster'
+        # else:
+        #     return None
+        ### Bacon end
+
+
     # pop the logo and menu in
     def _makeLogo(self, x, y, scale, delay, customTexture=None, jitterScale=1.0, rotate=0, vrDepthOffset=0):
         # temp easter googness
@@ -673,7 +677,7 @@ class MainMenuActivity(bs.Activity):
         bs.animate(c,"input0",keys)
         bs.animate(c,"input1",keys)
         c.connectAttr("output",logo.node,"scale")
-            
+
     def _startPreloads(self):
         # FIXME - the func that calls us back doesn't save/restore state
         # or check for a dead activity so we have to do that ourself..
@@ -681,8 +685,8 @@ class MainMenuActivity(bs.Activity):
         with bs.Context(self): _preload1()
 
         bs.gameTimer(500,lambda: bs.playMusic('Menu'))
-        
-        
+
+
 # a second or two into the main menu is a good time to preload some stuff we'll need elsewhere
 # to avoid hitches later on..
 def _preload1():
@@ -760,13 +764,13 @@ class SplashScreenActivity(bs.Activity):
         self._part1Duration = 4000
         self._tex = bs.getTexture('aliSplash')
         self._tex2 = bs.getTexture('aliControllerQR')
-        
+
     def _startPreloads(self):
         # FIXME - the func that calls us back doesn't save/restore state
         # or check for a dead activity so we have to do that ourself..
         if self.isFinalized(): return
         with bs.Context(self): _preload1()
-        
+
     def onTransitionIn(self):
         import bsInternal
         bs.Activity.onTransitionIn(self)
@@ -790,7 +794,7 @@ class SplashScreenActivity(bs.Activity):
                                   position=(0,270),
                                   color=(1,1,1,1),
                                   transition='fadeIn')
-        
+
     def onSomethingPressed(self):
         self.end()
 
@@ -802,7 +806,7 @@ class MainMenuSession(bs.Session):
         bs.Session.__init__(self)
 
         self._locked = False
-        
+
         # we have a splash screen only on ali currently..
         env = bs.getEnvironment()
         global gFirstRun
@@ -819,14 +823,13 @@ class MainMenuSession(bs.Session):
             bsInternal._unlockAllInput()
         # any ending activity leads us into the main menu one..
         self.setActivity(bs.newActivity(MainMenuActivity))
-        
+
     def onPlayerRequest(self,player):
-        
+
         # reject player requests, but if we're in a splash-screen, take the opportunity to tell it to leave
         # FIXME - should add a blanket way to capture all input for cases like this
         activity = self.getActivity()
         if isinstance(activity, SplashScreenActivity):
             with bs.Context(activity): activity.onSomethingPressed()
-            
-        return False
 
+        return False

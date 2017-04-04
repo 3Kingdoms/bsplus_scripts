@@ -9,14 +9,14 @@ import time
 class Team(object):
     """
     category: Game Flow Classes
-    
+
     A team of one or more bs.Players.
     Note that a player *always* has a team;
     in some cases, such as free-for-all bs.Sessions,
     the teams consists of just one bs.Player each.
 
     Attributes:
-    
+
        name
           The team's name.
 
@@ -37,7 +37,7 @@ class Team(object):
           Unlike gameData, this perists for the duration
           of the session.
     """
-        
+
     def __init__(self,teamID=0,name='',color=(1,1,1)):
         """
         Instantiate a team. In most cases teams are provided to you
@@ -52,7 +52,7 @@ class Team(object):
         object.__setattr__(self,'players',[])
         object.__setattr__(self,'gameData',{}) # per-game user-data
         object.__setattr__(self,'sessionData',{}) # per-session user-data
-        
+
     def getID(self):
         'Returns the numeric team ID.'
         return object.__getattribute__(self,'_teamID')
@@ -62,7 +62,7 @@ class Team(object):
         for player in self.players:
             try: player.actor.node.handleMessage('celebrate',10000)
             except Exception: pass
-        
+
     def _reset(self):
         self._resetGameData()
         object.__setattr__(self,'players',[])
@@ -99,7 +99,7 @@ class DieMessage(object):
        how
           The particular reason for death; 'fall', 'impact', 'leftGame', etc.
           This can be examined for scoring or other purposes.
-         
+
     """
     def __init__(self,immediate=False,how="generic"):
         """
@@ -133,7 +133,7 @@ class StandMessage(object):
 class PickUpMessage(object):
     """
     category: Message Classes
-    
+
     Tells an object that it has picked something up.
 
     Attributes:
@@ -148,7 +148,7 @@ class PickUpMessage(object):
 class DropMessage(object):
     """
     category: Message Classes
-    
+
     Tells an object that it has dropped whatever it was holding.
     """
     pass
@@ -156,11 +156,11 @@ class DropMessage(object):
 class PickedUpMessage(object):
     """
     category: Message Classes
-    
+
     Tells an object that it has been picked up by something.
 
     Attributes:
-    
+
        node
           The bs.Node doing the picking up.
     """
@@ -173,11 +173,11 @@ class PickedUpMessage(object):
 class DroppedMessage(object):
     """
     category: Message Classes
-    
+
     Tells an object that it has been dropped.
 
     Attributes:
-    
+
        node
           The bs.Node doing the dropping.
     """
@@ -190,7 +190,7 @@ class DroppedMessage(object):
 class ShouldShatterMessage(object):
     """
     category: Message Classes
-    
+
     Tells an object that it should shatter.
     """
     pass
@@ -198,7 +198,7 @@ class ShouldShatterMessage(object):
 class ImpactDamageMessage(object):
     """
     category: Message Classes
-    
+
     Tells an object that it has been jarred violently and
     may want to be damaged.
 
@@ -216,7 +216,7 @@ class ImpactDamageMessage(object):
 class FreezeMessage(object):
     """
     category: Message Classes
-    
+
     Tells an object to become frozen
     (as in the effects of an ice bs.Bomb).
     """
@@ -225,43 +225,81 @@ class FreezeMessage(object):
 class ThawMessage(object):
     """
     category: Message Classes
-    
+
     Tells an object that was frozen by a bs.FrozenMessage
     to thaw out.
     """
     pass
-    
+
 class HealMessage(object):
     """
     category: Message Classes
-    
+
     Heals to 100% health, removes curse and thaws frozen players.
     On bombs, it removes them without detonating them.
     """
     pass
-    
+
 class BurnMessage(object):
     """
     category: Message Classes
-    
+
     Tells an object to become lit.
     (used with Fire Bomb)
     """
     pass
-    
+
 class ExtinguishMessage(object):
     """
     category: Message Classes
-    
+
     Tells an object to extinguish itself.
     (used to cancel the fire debuff)
+    """
+    pass
+
+class TrackMessage(object):
+    """
+    category: Message Classes
+
+    Tells an object to be tracked by bombs.
+    (used with tracker bomb)
+    """
+    def __init__(self, sourcePlayer = None):
+        super(TrackMessage, self).__init__()
+        self.sourcePlayer = sourcePlayer
+
+class InvincibleMessage(object):
+    """
+    category: Message Classes
+
+    Tells an object to be Invincible.
+    (used with tracker bomb)
+    """
+    pass
+
+class HockeyStartMessage(object):
+    """
+    category: Message Classes
+
+    Tells an object to start hockey.
+    (used with tracker bomb)
+    """
+    pass
+
+class HockeyEndMessage(object):
+    """
+    category: Message Classes
+
+    Tells an object to end hockey.
+    (used with tracker bomb)
     """
     pass
 
 class HitMessage(object):
     """
     category: Message Classes
-    
+
     Tells an object it has been hit in some way.
     This is used by punches, explosions, etc to convey
     their effect to a target.
@@ -277,7 +315,7 @@ class HitMessage(object):
         # convert None to empty node-ref/player-ref
         if srcNode is None: srcNode = bs.Node(None)
         if sourcePlayer is None: sourcePlayer = bs.Player(None)
-        
+
         self.srcNode = srcNode
         self.pos = pos
         self.velocity = velocity
@@ -356,7 +394,7 @@ class Actor(object):
 
     def _handleMessageSanityCheck(self):
         if self.isFinalized(): bs.printError('handleMessage called on finalized actor',self)
-        
+
     def autoRetain(self):
         """
         Automatically keeps this bs.Actor in existence by storing a
@@ -391,7 +429,7 @@ class Actor(object):
         """
         activity = self.getActivity(exceptionOnNone=False)
         return True if activity is None else activity.isFinalized()
-    
+
     def exists(self):
         """
         Returns True if the actor is still visible or present in some way.
@@ -429,7 +467,7 @@ class Actor(object):
         a = self._activity()
         if a is None and exceptionOnNone: raise Exception("Activity not found")
         return a
-            
+
 
 class NodeActor(Actor):
     """
@@ -442,11 +480,11 @@ class NodeActor(Actor):
     clearing a python list, etc.
 
     Attributes:
-    
+
        node
           The wrapped node.
     """
-    
+
     def __init__(self,node):
         """
         Instantiate with a given bs.Node.
@@ -463,7 +501,7 @@ class NodeActor(Actor):
 class Session(object):
     """
     category: Game Flow Classes
-    
+
     A Session is the highest level control structure in the game.
     Types of sessions are bs.FreeForAllSession, bs.TeamsSession, and
     bs.CoopSession.
@@ -498,7 +536,7 @@ class Session(object):
         self._sessionData = bsInternal._registerSession(self)
 
         # self._tempSessionSanityCheck()
-        
+
         self._useTeams = (teamNames is not None)
         self._useTeamColors = useTeamColors
         self._inSetActivity = False
@@ -512,9 +550,9 @@ class Session(object):
 
         # hacky way to create empty weak ref; must be a better way...
         class EmptyObj: pass
-        self._activityWeak = weakref.ref(EmptyObj()) 
+        self._activityWeak = weakref.ref(EmptyObj())
         if self._activityWeak() is not None: raise Exception("error creating empty weak ref")
-        
+
         self._nextActivity = None
         self._wantToEnd = False
         self._ending = False
@@ -531,7 +569,7 @@ class Session(object):
                 # TEMP SANITY CHECK; session should be us and activity none here..
                 # if bs.getSession(exceptionOnNone=False) is not self: bs.printError('context error; session not current')
                 # if bs.getActivity(exceptionOnNone=False) is not None: bs.printError('context error; activity not None')
-                
+
                 try:
                     with bs.Context(self): self.onTeamJoin(team)
                 except Exception:
@@ -542,7 +580,7 @@ class Session(object):
 
         # instantiates our session globals node.. (so it can apply default settings)
         bs.getSharedObject('globals')
-        
+
     def onPlayerRequest(self,player):
         """
         Called when a new bs.Player wants to join;
@@ -552,19 +590,19 @@ class Session(object):
         # (allow any number of players in benchmarks)
 
         # print 'GOT',player,dir(player.getInputDevice()),player.getInputDevice().getUniqueIdentifier()
-        
+
         # limit player counts based on pro purchase/etc *unless* we're in a stress test
         if bsUtils._gStressTestResetTimer is None:
-            
+
             if len(self.players) >= self._maxPlayers:
                 bs.playSound(bs.getSound('error'))
                 bs.screenMessage(bs.Lstr(resource='playerLimitReachedText',subs=[('${COUNT}',str(self._maxPlayers))]),color=(0.8,0,0))
                 return False
-            
+
         bs.playSound(bs.getSound('dripity'))
         #bs.playSound(self._joinSound)
         return True
-    
+
     def onPlayerLeave(self,player):
         """
         Called when a previously-accepted bs.Player leaves the session.
@@ -578,9 +616,9 @@ class Session(object):
 
             # this will be None if the player is still in the chooser
             team = player.getTeam()
-            
+
             activity = self._activityWeak()
-            
+
             # if he had no team, he's in the lobby
             # if we have a current activity with a lobby, ask them to remove him
             if team is None:
@@ -588,7 +626,7 @@ class Session(object):
                     try: self._lobby.removeChooser(player)
                     except Exception:
                         bs.printException('Error: exception in Lobby.removeChooser()')
-                    
+
             # *if* he was actually in the game, announce his departure
             if team is not None:
                 bs.screenMessage(bs.Lstr(resource='playerLeftText',subs=[('${PLAYER}',player.getName(full=True))]))
@@ -614,7 +652,7 @@ class Session(object):
                     except Exception: bs.printException('exception in onPlayerLeave for activity',activity)
                 else:
                     bs.printError("finalized activity in onPlayerLeave; shouldn't happen")
-                
+
                 player._setActivity(None)
 
                 # reset the player - this will remove its actor-ref and clear its calls/etc
@@ -636,13 +674,13 @@ class Session(object):
                         except Exception: bs.printException('exception in onTeamLeave for activity',activity)
                     else:
                         bs.printError("finalized activity in onPlayerLeave p2; shouldn't happen")
-                        
+
                     # clear the team's game-data (so dying stuff will have proper context)
                     try:
                         with bs.Context(activity): team._resetGameData()
                     except Exception:
                         bs.printException('exception clearing gameData for team:',team,'for player:',player,'in activity:',activity)
-                        
+
                 # remove the team from the session
                 self.teams.remove(team)
                 try:
@@ -681,7 +719,7 @@ class Session(object):
             self.setActivity(bs.newActivity(EndSessionActivity))
             self._wantToEnd = False
             self._ending = True # prevents further activity-mucking
-        
+
     def onTeamJoin(self,team):
         'Called when a new bs.Team joins the session.'
         # self._tempSessionSanityCheck()
@@ -692,14 +730,14 @@ class Session(object):
         # self._tempSessionSanityCheck()
         pass
 
-    
+
     def _activityEnd(self,activity,results):
         # run the subclass callback in the session context
         try:
             with bs.Context(self): self.onActivityEnd(activity,results)
         except Exception:
             bs.printException('exception in onActivityEnd() for session',self,'activity',activity,'with results',results)
-            
+
     def handleMessage(self,m):
         'General message handling; can be passed any message object.'
         import bsLobby
@@ -707,7 +745,7 @@ class Session(object):
             self._onPlayerReady(m.chooser)
 
         elif isinstance(m, EndActivityMessage):
-            
+
             # if the whole session is shutting down, ignore these..
             if self._ending: return
 
@@ -720,7 +758,7 @@ class Session(object):
                         m.activity._shouldEndImmediately = True
                         m.activity._shouldEndImmediatelyResults = m.results
                         m.activity._shouldEndImmediatelyDelay = m.delay
-                        
+
                 # the activity has already begun; get ready to end it..
                 else:
                     if (not m.activity._hasEnded) or m.force:
@@ -752,27 +790,27 @@ class Session(object):
 
         # quietly ignore this if we're currently going down
         if self._ending: return
-        
+
         if activity is self._activityRetained:
             bs.printError("activity set to already-current activity")
             return
 
         if self._nextActivity is not None:
             raise Exception("Activity switch already in progress (to "+str(self._nextActivity)+")")
-        
+
         self._inSetActivity = True
-        
+
         prevActivity = self._activityRetained
 
         if prevActivity is not None:
             with bs.Context(prevActivity):
                 prevGlobals = bs.getSharedObject('globals')
         else: prevGlobals = None
-                
-            
+
+
 
         with bs.Context(activity):
-            
+
             g = bs.getSharedObject('globals')
 
             g.useFixedVROverlay = activity._useFixedVROverlay
@@ -785,40 +823,40 @@ class Session(object):
                 g.musicContinuous = True # prevents restarting same music
                 g.music = prevGlobals.music
                 g.musicCount += 1
-            
+
             if activity._inheritsCameraVROffset and prevGlobals is not None:
                 g.vrCameraOffset = prevGlobals.vrCameraOffset
             if activity._inheritsVROverlayCenter and prevGlobals is not None:
                 g.vrOverlayCenter = prevGlobals.vrOverlayCenter
                 g.vrOverlayCenterEnabled = prevGlobals.vrOverlayCenterEnabled
-            
+
             # if they want to inherit tint from the previous activity..
             if activity._inheritsTint and prevGlobals is not None:
                 g.tint = prevGlobals.tint
                 g.vignetteOuter = prevGlobals.vignetteOuter
                 g.vignetteInner = prevGlobals.vignetteInner
-            
+
             activity._hasTransitionedIn = True
             activity.onTransitionIn()
 
 
         self._nextActivity = activity
-        
+
         # if we have a current activity, tell it it's transitioning out;
         # the next one will become current once this one dies.
         if prevActivity is not None:
             prevActivity._transitioningOut = True
-            
+
             # activity will be None until the next one begins
             with bs.Context(prevActivity):
                 prevActivity.onTransitionOut()
-            
+
             # setting this to None should free up the old activity to die
             # which will call _beginNextActivity.
             # we can still access our old activity through self._activityWeak()
             # to keep it up to date on player joins/departures/etc until it dies
             self._activityRetained = None
-            
+
         # theres no existing activity; lets just go ahead with the begin call
         else:
             self._beginNextActivity()
@@ -841,7 +879,7 @@ class Session(object):
                     bs.realTimer(activity._transitionTime,prevActivity._destroy)
             # just run immediately
             else: prevActivity._destroy()
-            
+
         self._inSetActivity = False
 
     def getActivity(self):
@@ -864,9 +902,9 @@ class Session(object):
             bs.printError('incorrect context; got session '+str(bs.getSession())+'; wanted '+str(self))
         if bs.getActivity(exceptionOnNone=False) is not None:
             bs.printError('incorrect context; got activity '+str(bs.getActivity(exceptionOnNone=False))+'; wanted None')
-    
+
     def _requestPlayer(self,player):
-        
+
         # if we're ending, allow no new players
         if self._ending: return False
 
@@ -882,7 +920,7 @@ class Session(object):
             self.players.append(player)
 
             activity = self._activityWeak()
-            
+
             # if we have a current activity with a lobby,
             # ask it to bring up a chooser for this player.
             # otherwise they'll have to wait around for the next activity.
@@ -892,7 +930,7 @@ class Session(object):
                 except Exception:
                     bs.printException('exception in lobby.addChooser()')
 
-            
+
         return result
 
     def onActivityEnd(self,activity,results):
@@ -902,7 +940,7 @@ class Session(object):
         another activity.
         """
         pass
-    
+
     def _beginNextActivity(self):
         """
         Called once the previous activity has been totally torn down;
@@ -925,7 +963,7 @@ class Session(object):
         lobby = chooser.getLobby()
 
         activity = self._activityWeak()
-        
+
         # in joining activities, we wait till all choosers are ready
         # and then create all players at once
         if activity is not None and activity._isJoiningActivity:
@@ -955,11 +993,11 @@ class Session(object):
             bs.printError('player not found in session player-list after chooser selection')
 
         activity = self._activityWeak()
-        
+
         # we need to reset the player's input here, as it is currently
         # referencing the chooser which could inadvertantly keep it alive
         player.resetInput()
-        
+
         # pass it to the current activity if it has already begun
         # (otherwise it'll get passed once begin is called)
         passToActivity = (activity is not None and activity.hasBegun() and not activity._isJoiningActivity)
@@ -1004,15 +1042,15 @@ class Session(object):
         self.scoreSet.registerPlayer(player)
 
         if passToActivity:
-            
+
             if isinstance(self,bs.FreeForAllSession):
                 if len(player.getTeam().players) != 0:
                     bs.printError("expected 0 players in FFA team")
-                    
+
             # dont actually add the player to their team list if we're not in an activity;
             # (players get (re)added to their team lists when the activity begins)
             player.getTeam().players.append(player)
-            
+
             if player in activity.players:
                 bs.printException('Duplicate player in bs.Session._addChosenPlayer:',player)
             else:
@@ -1023,7 +1061,7 @@ class Session(object):
                     with bs.Context(activity): activity.onPlayerJoin(player)
                 except Exception: bs.printException('Error on onPlayerJoin for',activity)
         return player
-        
+
 
 
 class EndActivityMessage(object):
@@ -1043,7 +1081,7 @@ class Activity(object):
 
     Units wrangled by a bs.Session.  Examples of Activities include games,
     score-screens, cutscenes, etc. A bs.Session has one 'current' Activity at
-    any time, though their existence can overlap during transitions. 
+    any time, though their existence can overlap during transitions.
 
     Attributes:
 
@@ -1091,9 +1129,9 @@ class Activity(object):
         self._continueCost = bsInternal._getAccountMiscReadVal('continueStartCost',25)
         self._continueCostMult = bsInternal._getAccountMiscReadVal('continuesMult',2)
         self._continueCostOffset = bsInternal._getAccountMiscReadVal('continuesOffset',0)
-        
+
         self._finalized = False
-        
+
         # whether to print every time a player dies.  This can be pertinant
         # in games such as Death-Match but can be annoying in games where it doesn't matter
         self.announcePlayerDeaths = False
@@ -1105,7 +1143,7 @@ class Activity(object):
 
         # whether game-time should still progress when in menus/etc
         self._allowPausing = False
-        
+
         # whether idle players can potentially be kicked (should not happen in menus/etc)
         self._allowKickIdlePlayers = True
 
@@ -1114,10 +1152,10 @@ class Activity(object):
         # generally this should be on for games and off for transitions/score-screens/etc
         # that persist between maps.
         self._useFixedVROverlay = False
-        
+
         # if True, runs in slow motion and turns down sound pitch
         self._isSlowMotion = False
-        
+
         # set this to True to inherit slow motion setting from previous activity
         # (useful for transitions to avoid hitches)
         self._inheritsSlowMotion = False
@@ -1125,7 +1163,7 @@ class Activity(object):
         # set this to True to keep playing the music from the previous activity
         # (without even restarting it)
         self._inheritsMusic = False
-        
+
         # set this to true to inherit VR camera offsets from the previous activity
         # (useful for preventing sporadic camera movement during transitions)
         self._inheritsCameraVROffset = False
@@ -1133,11 +1171,11 @@ class Activity(object):
         # set this to true to inherit (non-fixed) VR overlay positioning from the previous activity
         # (useful for prevent sporadic overlay jostling during transitions)
         self._inheritsVROverlayCenter = False
-        
+
         # set this to true to inherit screen tint/vignette colors from the previous activity
         # (useful to prevent sudden color changes during transitions)
         self._inheritsTint = False
-        
+
         # if the activity fades or transitions in, it should set the length of time here
         # so that previous activities will be kept alive for that long (avoiding 'holes' in the screen)
         # note that this time value is in real-time; not game-time.
@@ -1155,7 +1193,7 @@ class Activity(object):
 
         self._actorWeakRefs = []
         self._ownedNodes = []
-        
+
         self._lastDeadObjectPruneTime = bs.getGameTime()
 
         # this stuff gets filled in just before onBegin() is called
@@ -1165,7 +1203,7 @@ class Activity(object):
 
         self._useLobby = True
         self._lobby = None
-        
+
 
     def onFinalize(self):
         """
@@ -1176,7 +1214,7 @@ class Activity(object):
         in life is to hit zero references and die so the next activity can begin.
         """
         pass
-    
+
     def isFinalized(self):
         """
         The activity is set as finalized when shutting down.
@@ -1184,7 +1222,7 @@ class Activity(object):
         run, etc, and the activity should be considered to be a 'zombie'.
         """
         return self._finalized
-    
+
     def __del__(self):
 
         # if the activity has been run, we've explicitly cleaned it up,
@@ -1196,7 +1234,7 @@ class Activity(object):
         # since we're mostly between activities at this point, lets run a cycle of garbage collection;
         # hopefully it won't cause hitches here
         bsUtils.garbageCollect(sessionEnd=False)
-        
+
         # now that our object is officially gonna be dead, tell the session to fire up the next activity
         if self._transitioningOut:
             session = self._session()
@@ -1213,7 +1251,7 @@ class Activity(object):
                 'tintTexture':bs.getTexture(info['tintTexture']),
                 'tintColor':info['tintColor'],
                 'tint2Color':info['tint2Color']}
-    
+
     def _destroy(self):
 
         # create a real-timer that watches a weak-ref of this activity
@@ -1222,7 +1260,7 @@ class Activity(object):
         with bs.Context('UI'):
             r = weakref.ref(self)
             self._activityDeathCheckTimer = bs.Timer(5000,bs.Call(self._checkActivityDeath,r,[0]),repeat=True,timeType='real')
-        
+
         # run _finalize in an empty context; nothing should be happening in there
         # except deleting things which requires no context.
         # (plus, _finalize() runs in the destructor for un-run activities
@@ -1249,7 +1287,7 @@ class Activity(object):
 
     def isWaitingForContinue(self):
         return self._isWaitingForContinue
-    
+
     def continueOrEndGame(self):
         """If continues are allowed, prompts the player to purchase a continue
         and calls either endGame or continueGame depending on the result"""
@@ -1285,9 +1323,9 @@ class Activity(object):
 
         except Exception:
             bs.printException("error continuing game")
-            
+
         self.endGame()
-        
+
     @classmethod
     def _checkActivityDeath(cls,activityRef,counter):
         try:
@@ -1298,7 +1336,7 @@ class Activity(object):
             print 'This means something is still strong-referencing it.'
 
             counter[0] += 1
-            
+
             # FIXME - running the code below shows us references but winds up keeping
             # the object alive... need to figure out why.
             # for now we just print refs if the count gets to 3, and then we kill the app at 4
@@ -1314,21 +1352,21 @@ class Activity(object):
             if counter[0] == 4:
                 print 'Killing app due to stuck activity... :-('
                 bs.quit()
-            
+
         except Exception:
             bs.printException( 'exception on _checkActivityDeath:')
-        
+
     def _finalize(self):
 
         self._finalized = True
-        
+
         # do some default cleanup
         try:
 
             try: self.onFinalize()
             except Exception:
                 bs.printException('Exception in onFinalize() for activity',self)
-                
+
             # send finalize notices to all remaining actors
             for actorRef in self._actorWeakRefs:
                 try:
@@ -1352,7 +1390,7 @@ class Activity(object):
                 try: team._reset()
                 except Exception:
                     bs.printException('Exception on bs.Activity._finalize() resetting team:',player)
-                
+
         except Exception:
             bs.printException('Exception during bs.Activity._finalize():')
 
@@ -1411,7 +1449,7 @@ class Activity(object):
     def onTeamLeave(self,team):
         'Called when a bs.Team leaves the activity.'
         pass
-        
+
     def onTransitionIn(self):
         """
         Called when your activity is first becoming visible;
@@ -1420,9 +1458,9 @@ class Activity(object):
         until bs.Activity.onBegin() is called; they are still owned
         by the previous activity up until this point.
         """
-        
+
         self._calledActivityOnTransitionIn = True
-        
+
         # start pruning our transient actors periodically
         self._pruneDeadObjectsTimer = bs.Timer(5000,bs.WeakCall(self._pruneDeadObjects),repeat=True)
         self._pruneDeadObjects()
@@ -1454,7 +1492,7 @@ class Activity(object):
         whatever is relevant to keep the game going.
         """
         pass
-    
+
     def handleMessage(self,m):
         'General message handling; can be passed any message object.'
         # self._tempActivitySanityCheck();
@@ -1472,7 +1510,7 @@ class Activity(object):
         # if results is a standard team-game-results, associate it with us so it can grab our score prefs
         if isinstance(results,bs.TeamGameResults):
             results._setGame(self)
-            
+
         # if we had a standard time-limit that had not expired, stop it so it doesnt tick annoyingly
         if hasattr(self,'_standardTimeLimitTime') and self._standardTimeLimitTime > 0:
             self._standardTimeLimitTimer = self._standardTimeLimitText = None
@@ -1480,10 +1518,10 @@ class Activity(object):
         # ditto with tournament time limits
         if hasattr(self,'_tournamentTimeLimitTime') and self._tournamentTimeLimitTime > 0:
             self._tournamentTimeLimitTimer = self._tournamentTimeLimitText = self._tournamentTimeLimitTitleText = None
-            
+
         self.getSession().handleMessage(EndActivityMessage(self, results, delay, force))
 
-        
+
     def hasTransitionedIn(self):
         'Returns whether onTransitionIn() has been called for this activity.'
         return self._hasTransitionedIn
@@ -1508,14 +1546,14 @@ class Activity(object):
     def _createPlayerNode(self,player):
         with bs.Context(self):
             player.gameData['_playerNode'] = bs.NodeActor(bs.newNode('player',attrs={'playerID':player.getID()}))
-            
+
     def _begin(self,session):
         'private call to set up onBegin'
 
         if self._hasBegun:
             bs.printError("_begin called twice; this shouldn't happen")
             return
-            
+
         self.scoreSet = session.scoreSet
 
         # operate on the subset of session players who have passed team/char selection
@@ -1528,7 +1566,7 @@ class Activity(object):
                 else: chooserPlayers.append(p)
             else:
                 bs.printError("got nonexistant player in Activity._begin()")
-                
+
         # add teams in one by one and send team-joined messages for each
         for team in session.teams:
             if team in self.teams: raise Exception("Duplicate Team Entry")
@@ -1556,14 +1594,14 @@ class Activity(object):
             # and finally tell the game to start
             self._hasBegun = True
             self.onBegin()
-        
+
         # make sure that bs.Activity.onTransitionIn() got called at some point
         if not hasattr(self,'_calledActivityOnTransitionIn'):
              bs.printError("bs.Activity.onTransitionIn() never got called for "
                            +str(self)
                            +"; did you forget to call it in your onTransitionIn override?")
         else: del self._calledActivityOnTransitionIn
-        
+
         # make sure that bs.Activity.onBegin() got called at some point
         if not hasattr(self,'_calledActivityOnBegin'):
              bs.printError("bs.Activity.onBegin() never got called for "
@@ -1577,7 +1615,7 @@ class Activity(object):
             # otherwise, if we've already been told to die, do so now..
             if self._shouldEndImmediately:
                 self.end(self._shouldEndImmediatelyResults,self._shouldEndImmediatelyDelay)
-        
+
 class EndSessionActivity(Activity):
     """ Special activity to fade out and end the current session """
 
@@ -1589,7 +1627,7 @@ class EndSessionActivity(Activity):
         self._inheritsSlowMotion = True
         self._inheritsCameraVROffset = True
         self._inheritsVROverlayCenter = True
-        
+
     def onTransitionIn(self):
         Activity.onTransitionIn(self)
         bsInternal._fadeScreen(False,time=250)
@@ -1617,7 +1655,7 @@ class JoiningActivity(Activity):
 
         # in vr mode we dont want stuff moving around
         self._useFixedVROverlay = True
-        
+
     def onTransitionIn(self):
         Activity.onTransitionIn(self)
         self._background = bsUtils.Background(fadeTime=500,startFaded=True,showLogo=True)
@@ -1632,7 +1670,7 @@ class JoiningActivity(Activity):
         self._joinInfo = self.getSession()._lobby._createJoinInfo()
 
         bsInternal._setAnalyticsScreen('Joining Screen')
-        
+
 
 class TransitionActivity(Activity):
     """
@@ -1706,7 +1744,7 @@ class ScoreScreenActivity(Activity):
                         bs.realTimer(1000,bs.Call(bs.pushCall,bsUtils._runServer))
                     self._kickedOffServerRestart = True
                     return
-        
+
         self.end()
 
     def onTransitionIn(self,music='Scores',showTips=True):
@@ -1769,7 +1807,7 @@ class GameActivity(Activity):
         """
         Games should override this to provide info about their scoring setup.
         They should return a dict containing any of the following (missing values will be default):
-        
+
         'scoreName': a label shown to the user for scores; 'Score', 'Time Survived', etc. 'Score' is the default.
 
         'lowerIsBetter': a boolean telling whether lower scores are preferable instead of higher (the default).
@@ -1802,9 +1840,9 @@ class GameActivity(Activity):
         for name in values.keys():
             if name not in('scoreName','lowerIsBetter','noneIsWinner','scoreType','scoreVersion'):
                 print 'WARNING: invalid key in scoreInfo: "'+name+'"'
-        
+
         return values
-    
+
     @classmethod
     def getName(cls):
         """
@@ -1828,16 +1866,16 @@ class GameActivity(Activity):
                 name = bs.Lstr(resource='soloNameFilterText',subs=[('${NAME}',name)])
             if 'Epic Mode' in settings and settings['Epic Mode']:
                 name = bs.Lstr(resource='epicNameFilterText',subs=[('${NAME}',name)])
-        
+
         return name
-        
+
     @classmethod
     def getTeamDisplayString(cls,name):
         """
         Given a team name, returns a localized version of it.
         """
         return bs.Lstr(translate=('teamNames',name))
-    
+
     @classmethod
     def getDescription(cls,sessionType):
         """
@@ -1854,7 +1892,7 @@ class GameActivity(Activity):
         """
         description = cls.getDescription(sessionType)
         return bs.Lstr(translate=('gameDescriptions',description))
-    
+
     @classmethod
     def getSettings(cls,sessionType):
         """
@@ -1870,7 +1908,7 @@ class GameActivity(Activity):
         'default': This determines the default value as well as the type (int, float, or bool)
 
         'minValue': Minimum value for int/float settings.
-        
+
         'maxValue': Maximum value for int/float settings.
 
         'choices': A list of 2-member name/value tuples which the user can toggle through.
@@ -1951,7 +1989,7 @@ class GameActivity(Activity):
         is up next in a series.
         """
         bs.printErrorOnce('deprecated - use getConfigDisplayString()')
-        
+
         import bsMap
         name = cls.getNameLocalized(config['settings'])
 
@@ -1996,7 +2034,7 @@ class GameActivity(Activity):
                 bs.screenMessage(bs.Lstr(resource='noValidMapsErrorText'))
                 raise Exception("No valid maps")
             mapName = validMaps[random.randrange(len(validMaps))]
-            
+
         self._mapType = bsMap.getMapClass(mapName)
         self._mapType.preload()
         self._map = None
@@ -2004,7 +2042,7 @@ class GameActivity(Activity):
     # fixme - should we expose this through the player class?...
     def _getPlayerNode(self,player):
         return player.gameData['_playerNode'].node
-    
+
     def getMap(self):
         """
         Returns the bs.Map in use for this activity.
@@ -2017,7 +2055,7 @@ class GameActivity(Activity):
         Returns a name for this particular game instance.
         """
         return self.getDisplayString(self.settings)
-    
+
     def getInstanceNameLocalized(self):
         """
         Deprecated - use getInstanceDisplayString()
@@ -2040,7 +2078,7 @@ class GameActivity(Activity):
         except Exception:
             bs.printError('error geting campaign level name')
         return self.getInstanceDisplayString()
-    
+
     def getInstanceScoreBoardNameLocalized(self):
         """
         Deprecated - use getInstanceScoreBoardDisplayString
@@ -2155,7 +2193,7 @@ class GameActivity(Activity):
                 elif len(self.players) >= 8: bsInternal._incrementAnalyticsCount('Free-for-all round start 8+ human players')
         except Exception:
             bs.printException("error setting analytics screen")
-        
+
         # we dont do this in onTransitionIn because it may depend on players/teams which arent available until now
         bs.gameTimer(1,bs.WeakCall(self.showScoreBoardInfo))
         bs.gameTimer(1000,bs.WeakCall(self.showInfo))
@@ -2182,8 +2220,8 @@ class GameActivity(Activity):
             # keep our cached tourney info up to date
             bsUI._cacheTournamentInfo(data)
             self._setupTournamentTimeLimit(max(5,data[0]['timeRemaining']))
-        
-        
+
+
     def onPlayerJoin(self, player):
         Activity.onPlayerJoin(self,player)
         # by default, just spawn a dude
@@ -2201,16 +2239,16 @@ class GameActivity(Activity):
             # use a strong ref (Call) to make sure the actor doesnt die here due to no refs
             bs.gameTimer(0,bs.Call(actor.handleMessage,bs.DieMessage(how='leftGame')))
         player.setActor(None)
-        
+
         # send a specific death message so its known
         # that they're dying due to leaving the game
         # if player.actor is not None: player.actor.handleMessage(bs.DieMessage(how='leftGame'))
         # player.setActor(None)
 
     def handleMessage(self,m):
-        
+
         if isinstance(m,bs.PlayerSpazDeathMessage):
-            
+
             # inform our score-set of the demise
             player = m.spaz.getPlayer()
 
@@ -2231,7 +2269,7 @@ class GameActivity(Activity):
         in the top left corner showing the name
         and short description of the game.
         """
-        
+
         #sbName = self.getInstanceScoreBoardNameLocalized()
         sbName = self.getInstanceScoreBoardDisplayString()
 
@@ -2248,7 +2286,7 @@ class GameActivity(Activity):
         sbDesc = translation
 
         vr = bs.getEnvironment()['vrMode']
-        
+
         # y = -34 if sbDesc == '' else -20
         y = -34 if isEmpty else -20
         y -= 16
@@ -2264,7 +2302,7 @@ class GameActivity(Activity):
                                                                       'shadow':1.0 if vr else 0.6,
                                                                       'flatness':1.0 if vr else 0.5,
                                                                       'scale':1.1}))
-        
+
         bsUtils.animate(self._gameScoreBoardNameText.node,'opacity',{0:0.0,1000:1.0})
 
         self._gameScoreBoardDescriptionText = bs.NodeActor(bs.newNode("text",
@@ -2278,7 +2316,7 @@ class GameActivity(Activity):
                                                                              'shadow':1.0 if vr else 0.7,
                                                                              'flatness':1.0 if vr else 0.8,
                                                                              'color':(1,1,1,1) if vr else (0.9,0.9,0.9,1.0)}))
-        
+
         bsUtils.animate(self._gameScoreBoardDescriptionText.node,'opacity',{0:0.0,1000:1.0})
 
     def showInfo(self):
@@ -2288,7 +2326,7 @@ class GameActivity(Activity):
         bsUtils.ZoomText(name,maxWidth=800,lifespan=2500,jitter=2.0,position=(0,180),
                          flash=False,color=(0.93*1.25,0.9*1.25,1.0*1.25),trailColor=(0.15,0.05,1.0,0.0)).autoRetain()
         bs.gameTimer(200,bs.Call(bs.playSound,bs.getSound('gong')))
-            
+
         # the description can be either a string or a sequence with args to swap in post-translation
         desc = self.getInstanceDescription()
         if type(desc) in [unicode,str]: desc = [desc] # handle simple string case
@@ -2303,7 +2341,7 @@ class GameActivity(Activity):
             translation = bs.Lstr(resource='epicDescriptionFilterText',subs=[('${DESCRIPTION}',translation)])
 
         vr = bs.getEnvironment()['vrMode']
-        
+
         d = bs.newNode('text',
                        attrs={'vAttach':'center',
                               'hAttach':'center',
@@ -2405,7 +2443,7 @@ class GameActivity(Activity):
 
     def onContinue(self):
         pass
-        
+
     def spawnPlayerIfExists(self,player):
         """
         A utility method which calls self.spawnPlayer() *only* if the bs.Player
@@ -2424,7 +2462,7 @@ class GameActivity(Activity):
         if not player.exists():
             bs.printError('spawnPlayer() called for nonexistant player')
             return
-        
+
         return self.spawnPlayerSpaz(player)
 
     def respawnPlayer(self,player,respawnTime=None):
@@ -2436,16 +2474,16 @@ class GameActivity(Activity):
         An explicit 'respawnTime' can optionally be provided
         (in milliseconds).
         """
-        
+
         if player is None or not player.exists():
             if player is None: bs.printError('None passed as player to respawnPlayer()')
             else: bs.printError('Nonexistant bs.Player passed to respawnPlayer(); call player.exists() to make sure a player is still there.')
             return
-        
+
         if player.getTeam() is None:
             bs.printError('player has no team in respawnPlayer()')
             return
-            
+
         if respawnTime is None:
             if len(player.getTeam().players) == 1: respawnTime = 3000
             elif len(player.getTeam().players) == 2: respawnTime = 5000
@@ -2462,7 +2500,7 @@ class GameActivity(Activity):
             import bsSpaz
             player.gameData['respawnTimer'] = bs.Timer(respawnTime,bs.WeakCall(self.spawnPlayerIfExists,player))
             player.gameData['respawnIcon'] = bsSpaz.RespawnIcon(player,respawnTime)
-        
+
 
     def spawnPlayerSpaz(self,player,position=(0,0,0),angle=None):
         """
@@ -2474,15 +2512,52 @@ class GameActivity(Activity):
 
         lightColor = bsUtils.getNormalizedColor(color)
         displayColor = bs.getSafeColor(color,targetIntensity=0.75)
+
+        # Bacon Added Begin
+        spaz = None
+        from superPowerConfig import superPowerDict
+        playerExtraConfig={
+            'canAcceptPowerups':True,
+            'cooldownTime':0,
+            'superpower':None,
+            'bombCount':1,
+            'hitPointsMax':1000,
+            'hitPoints':1000,
+            'shieldHitPointsMax':800,
+         }
+        if player.character in superPowerDict:
+            playerExtraConfig['canAcceptPowerups']=superPowerDict[player.character]['canAcceptPowerups']
+            playerExtraConfig['cooldownTime']=superPowerDict[player.character]['cooldownTime']
+            playerExtraConfig['superpower']=superPowerDict[player.character]['superpower']
+            playerExtraConfig['bombCount']=superPowerDict[player.character]['bombCount']
+            playerExtraConfig['hitPointsMax']=superPowerDict[player.character]['hitPointsMax']
+            playerExtraConfig['hitPoints']=superPowerDict[player.character]['hitPoints']
+            playerExtraConfig['shieldHitPointsMax']=superPowerDict[player.character]['shieldHitPointsMax']
+
         spaz = bs.PlayerSpaz(color=color,
                              highlight=highlight,
                              character=player.character,
-                             player=player)
+                             player=player,
+                             canAcceptPowerups=playerExtraConfig['canAcceptPowerups'],
+                             cooldownTime=playerExtraConfig['cooldownTime'],
+                             superpower=playerExtraConfig['superpower'],
+                             bombCount=playerExtraConfig['bombCount'],
+                             hitPointsMax=playerExtraConfig['hitPointsMax'],
+                             hitPoints=playerExtraConfig['hitPoints'],
+                             shieldHitPointsMax=playerExtraConfig['shieldHitPointsMax'])
         player.setActor(spaz)
+        spaz.setAttributes()
+        # Original
+        # spaz = bs.PlayerSpaz(color=color,
+        #                      highlight=highlight,
+        #                      character=player.character,
+        #                      player=player)
+        # player.setActor(spaz)
+        # Bacon Added End
 
         # we want a bigger area-of-interest in co-op mode
-        # if isinstance(self.getSession(),bs.CoopSession): spaz.node.areaOfInterestRadius = 5.0
-        # else: spaz.node.areaOfInterestRadius = 5.0
+        if isinstance(self.getSession(),bs.CoopSession): spaz.node.areaOfInterestRadius = 5.0
+        else: spaz.node.areaOfInterestRadius = 5.0
 
         # if this is co-op and we're on Courtyard or Runaround, add the material that allows us to
         # collide with the player-walls
@@ -2491,8 +2566,15 @@ class GameActivity(Activity):
             mat = self.getMap().preloadData['collideWithWallMaterial']
             spaz.node.materials += (mat,)
             spaz.node.rollerMaterials += (mat,)
-        
+
         spaz.node.name = name
+
+        # Bacon Added Begin
+        # if spaz.node.name in speed_list:
+        if player.character == 'Easter Bunny':
+            spaz.equipSpeed()
+        # Bacon Added End
+
         spaz.node.nameColor = displayColor
         spaz.connectControlsToPlayer()
         self.scoreSet.playerGotNewSpaz(player,spaz)
@@ -2515,7 +2597,7 @@ class GameActivity(Activity):
         """
         # need to do this in a timer for it to work.. need to look into that.
         bs.gameTimer(1,bs.WeakCall(self._projectFlagStand,pos[:3]))
-        
+
     def _projectFlagStand(self,pos):
         bs.emitBGDynamics(position=pos,emitType='flagStand')
 
@@ -2654,7 +2736,7 @@ class GameActivity(Activity):
                                                                      'scale':0.9}))
         self._tournamentTimeLimitTextInput = bs.NodeActor(bs.newNode('timeDisplay', attrs={'timeMin':0,'time2':self._tournamentTimeLimitTime*1000}))
         self._tournamentTimeLimitTextInput.node.connectAttr('output',self._tournamentTimeLimitText.node,'text')
-        
+
     def _tournamentTimeLimitTick(self):
         self._tournamentTimeLimitTime -= 1
         if self._tournamentTimeLimitTime <= 10:
@@ -2686,7 +2768,7 @@ class GameActivity(Activity):
         # normally we just connect this to time, but since this is a bit of a funky setup we just update
         # it manually once per second..
         self._tournamentTimeLimitTextInput.node.time2 = self._tournamentTimeLimitTime*1000
-        
+
     def showZoomMessage(self,message,color=(0.9,0.4,0.0),scale=0.8,duration=2000,trail=False):
         """
         Show the standard zooming text used to announce
@@ -2705,7 +2787,7 @@ class GameActivity(Activity):
         bsUtils.ZoomText(message,lifespan=duration,jitter=2.0,position=(0,200-i*100),scale=scale,maxWidth=800,
                          trail=trail,color=color).autoRetain()
 
-        
+
     def cameraFlash(self,duration=999):
         """
         Create a strobing camera flash effect
@@ -2735,8 +2817,7 @@ class GameActivity(Activity):
             spd2 = 0.5 + random.random()
             bsUtils.animate(tcombine,'input0',{0:x+0, 69*spd:x+10.0, 143*spd:x-10.0, 201*spd:x+0},loop=True)
             bsUtils.animate(tcombine,'input2',{0:y+0, 150*spd2:y+10.0, 287*spd2:y-10.0, 398*spd2:y+0},loop=True)
-            
+
             bsUtils.animate(light.node,"intensity",{0:0, 20*s:0, 50*s:0.8*iScale, 80*s:0, 100*s:0},loop=True,offset=times[i])
             bs.gameTimer(int(times[i]+random.randint(1,duration)*40*s),light.node.delete)
             self._cameraFlash.append(light)
-

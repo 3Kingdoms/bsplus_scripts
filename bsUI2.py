@@ -52,7 +52,7 @@ class LinkAccountsWindow(bsUI.Window):
     def _enterCodePress(self):
         bsUI.PromoCodeWindow(modal=True,originWidget=self._enterCodeButton)
         bs.containerWidget(edit=self._rootWidget,transition=self._transitionOut)
-        
+
     def _cancel(self):
         bs.containerWidget(edit=self._rootWidget,transition=self._transitionOut)
 
@@ -64,22 +64,22 @@ def _handleUIRemotePress():
     else:
         bs.screenMessage(bs.Lstr(resource="internal.controllerForMenusOnlyText"),color=(1,0,0))
         bs.playSound(bs.getSound('error'))
-    
+
 class GetBSRemoteWindow(bsUI.PopupWindow):
 
     def __init__(self):
 
         # position=originWidget.getScreenSpaceCenter()
         position=(0,0)
-        
+
         scale = 2.3 if bsUI.gSmallUI else 1.65 if bsUI.gMedUI else 1.23
         self._transitioningOut = False
-        
+
         self._width = 570
         self._height = 350
 
         bgColor = (0.5,0.4,0.6)
-        
+
         bsUI.PopupWindow.__init__(self,position=position,size=(self._width,self._height),
                              scale=scale,bgColor=bgColor)
 
@@ -109,10 +109,10 @@ class GetBSRemoteWindow(bsUI.PopupWindow):
                           text=bs.Lstr(resource='remoteAppInfoShortText',subs=[('${APP_NAME}',bs.Lstr(resource='titleText')),('${REMOTE_APP_NAME}',bs.Lstr(resource='remote_app.app_name'))]))
         # bs.imageWidget(parent=self._rootWidget, position=(self._width*0.5-150, self._height*0.5-150), size=(300, 300),
         #                texture=qrTex)
-        
+
     def _onCancelPress(self):
         self._transitionOut()
-        
+
     def _transitionOut(self):
         if not self._transitioningOut:
             self._transitioningOut = True
@@ -121,7 +121,7 @@ class GetBSRemoteWindow(bsUI.PopupWindow):
     def onPopupCancel(self):
         bs.playSound(bs.getSound('swish'))
         self._transitionOut()
-        
+
 class ChallengeEntryWindow(bsUI.PopupWindow):
 
     def __init__(self,challengeID,challengeActivity=None,position=(0,0),delegate=None,scale=None,offset=(0,0),onCloseCall=None):
@@ -134,7 +134,7 @@ class ChallengeEntryWindow(bsUI.PopupWindow):
         self._transitioningOut = False
 
         self._challengeActivity = challengeActivity
-        
+
         self._width = 340
         self._height = 290
 
@@ -156,10 +156,10 @@ class ChallengeEntryWindow(bsUI.PopupWindow):
             self._level = challenge['level']
             t = time.time()
             self._waitTickets = max(1,int(challenge['waitTickets'] * (1.0 - (t-challenge['waitStart'])/(challenge['waitEnd']-challenge['waitStart']))))
-            
-        
+
+
         self._bgColor = (0.5,0.4,0.6)
-        
+
         # creates our _rootWidget
         bsUI.PopupWindow.__init__(self,position=position,size=(self._width,self._height),
                                   scale=scale,bgColor=self._bgColor,offset=offset)
@@ -171,13 +171,13 @@ class ChallengeEntryWindow(bsUI.PopupWindow):
 
         if self._state is not None:
             self._saveState()
-        
+
         # clear out previous state (if any)
         children = self._rootWidget.getChildren()
         for c in children: c.delete()
 
         self._state = newState
-        
+
         # print 'REBUILDING FOR STATE',self._state
         self._cancelButton = bs.buttonWidget(parent=self._rootWidget,position=(20,self._height-30),size=(50,50),scale=0.5,
                                              label='',color=self._bgColor,
@@ -188,7 +188,7 @@ class ChallengeEntryWindow(bsUI.PopupWindow):
         showPrizes = False
         showLevel = False
         showForfeitButton = False
-        
+
         if self._state == 'error':
             titleStr = bs.Lstr(resource='coopSelectWindow.challengesText')
             bs.textWidget(parent=self._rootWidget,position=(self._width*0.5,self._height*0.5),size=(0,0),hAlign='center',vAlign='center',
@@ -237,7 +237,7 @@ class ChallengeEntryWindow(bsUI.PopupWindow):
             # bs.imageWidget(parent=self._rootWidget,drawController=b,size=(80,80),
             #                position=(bPos[0]-imgWidth*0.5,bPos[1]-imgHeight*0.5),texture=bs.getTexture('tickets'))
             showPrizes = True
-            
+
         elif self._state == 'freePlay':
             showLevel = True
             showForfeitButton = True
@@ -256,7 +256,7 @@ class ChallengeEntryWindow(bsUI.PopupWindow):
         else:
             titleStr = ''
             print 'Unrecognized state for ChallengeEntryWindow:',self._state
-        
+
         if showLevel:
             titleColor = (1,1,1,0.7)
             titleStr = 'Meteor Shower Blah'
@@ -278,7 +278,7 @@ class ChallengeEntryWindow(bsUI.PopupWindow):
                                                   textColor=(0.65,0.55,0.65),
                                                   autoSelect=True)
         else: self._forfeitButton = None
-            
+
         if showPrizes:
             bs.textWidget(parent=self._rootWidget,position=(self._width*0.5,self._height*0.24),size=(0,0),hAlign='center',vAlign='center',
                           flatness=1.0,scale=0.6,text=bs.Lstr(resource='coopSelectWindow.prizesText'),maxWidth=self._width*0.8,color=(0.8,0.8,1,0.5)),
@@ -290,11 +290,11 @@ class ChallengeEntryWindow(bsUI.PopupWindow):
                           text='   '.join(prizes),maxWidth=self._width*0.8)
 
         self._restoreState()
-            
+
     def _load(self):
         self._transitionOut()
         bs.screenMessage("WOULD LOAD CHALLENGE: "+self._challengeID,color=(0,1,0))
-        
+
     def _play(self):
         self._transitionOut()
         bs.screenMessage("WOULD PLAY CHALLENGE: "+self._challengeID,color=(0,1,0))
@@ -311,7 +311,7 @@ class ChallengeEntryWindow(bsUI.PopupWindow):
     def _forfeit(self):
         self._transitionOut()
         bs.screenMessage("WOULD FORFEIT CHALLENGE: "+self._challengeID,color=(0,1,0))
-        
+
     def _update(self):
         # print 'UPDATE',bs.getRealTime()
 
@@ -333,12 +333,12 @@ class ChallengeEntryWindow(bsUI.PopupWindow):
             bs.buttonWidget(edit=self._forfeitButton,
                             color=(0.6,0.45,0.6) if self._canForfeit else (0.6,0.57,0.6),
                             textColor=(0.65,0.55,0.65) if self._canForfeit else (0.5,0.5,0.5))
-        
-            
-        
+
+
+
     def _onCancel(self):
         self._transitionOut()
-        
+
     def _transitionOut(self):
         if not self._transitioningOut:
             self._transitioningOut = True
@@ -361,7 +361,7 @@ class ChallengeEntryWindow(bsUI.PopupWindow):
         # else: selName = 'Tickets'
         #bs.getConfig()['Challenge Pay Selection'] = selName
         #bs.writeConfig()
-    
+
     def _restoreState(self):
         # print 'restoring state'
         pass
@@ -373,7 +373,7 @@ class ChallengeEntryWindow(bsUI.PopupWindow):
 
 
 class AccountLinkCodeWindow(bsUI.Window):
-        
+
     def __init__(self,data):
         self._width = 350
         self._height = 200
@@ -390,15 +390,15 @@ class AccountLinkCodeWindow(bsUI.Window):
                                              color=(0.45,0.63,0.15),
                                              icon=bs.getTexture('crossOut'),iconScale=1.2)
         bs.containerWidget(edit=self._rootWidget,cancelButton=self._cancelButton)
-        
+
         t = bs.textWidget(parent=self._rootWidget,position=(self._width*0.5,self._height*0.5),size=(0,0),
                           color=(1.0,3.0,1.0),scale=2.0,
                           hAlign="center",vAlign="center",text=data['code'],maxWidth=self._width*0.85)
     def close(self):
         bs.containerWidget(edit=self._rootWidget,transition='outScale')
-        
+
 class ServerDialogWindow(bsUI.Window):
-        
+
     def __init__(self,data):
 
         self._dialogID = data['dialogID']
@@ -441,16 +441,16 @@ class ServerDialogWindow(bsUI.Window):
             return
         bsInternal._addTransaction({'type':'DIALOG_RESPONSE','dialogID':self._dialogID,'response':1})
         bs.containerWidget(edit=self._rootWidget,transition='outScale')
-        
+
     def _cancelPress(self):
         if bs.getRealTime()-self._startTime < 1000:
             bs.playSound(bs.getSound('error'))
             return
         bsInternal._addTransaction({'type':'DIALOG_RESPONSE','dialogID':self._dialogID,'response':0})
         bs.containerWidget(edit=self._rootWidget,transition='outScale')
-        
+
 class ReportPlayerWindow(bsUI.Window):
-        
+
     def __init__(self,accountID,originWidget):
         self._width = 550
         self._height = 220
@@ -458,7 +458,7 @@ class ReportPlayerWindow(bsUI.Window):
         self._transitionOut = 'outScale'
         scaleOrigin = originWidget.getScreenSpaceCenter()
         transition = 'inScale'
-        
+
         self._rootWidget = bs.containerWidget(size=(self._width,self._height),
                                               transition='inScale',
                                               scaleOriginStackOffset=scaleOrigin,
@@ -469,7 +469,7 @@ class ReportPlayerWindow(bsUI.Window):
                                              color=(0.4,0.4,0.5),
                                              icon=bs.getTexture('crossOut'),iconScale=1.2)
         bs.containerWidget(edit=self._rootWidget,cancelButton=self._cancelButton)
-        
+
         t = bs.textWidget(parent=self._rootWidget,position=(self._width*0.5,self._height*0.64),size=(0,0),
                           color=(1,1,1,0.8),scale=1.2,
                           hAlign="center",vAlign="center",
@@ -497,12 +497,12 @@ class ReportPlayerWindow(bsUI.Window):
         body = bs.Lstr(resource='reportPlayerExplanationText').evaluate()
         bs.openURL('mailto:support@froemling.net?subject=BombSquad Player Report: '+self._accountID+'&body='+urllib.quote(bs.utf8(body)))
         self.close()
-        
+
     def close(self):
         bs.containerWidget(edit=self._rootWidget,transition='outScale')
-        
+
 class SharePlaylistResultsWindow(bsUI.Window):
-        
+
     def __init__(self,data,origin=(0,0)):
 
         self._width = 450
@@ -526,12 +526,12 @@ class SharePlaylistResultsWindow(bsUI.Window):
                           hAlign="center",vAlign="center",
                           text=bs.Lstr(resource='importPlaylistCodeInstructionsText'),
                           maxWidth=self._width*0.85)
-        
+
         t = bs.textWidget(parent=self._rootWidget,position=(self._width*0.5,self._height*0.445),size=(0,0),
                           color=(1.0,3.0,1.0),scale=2.0,
                           hAlign="center",vAlign="center",text=data,maxWidth=self._width*0.85)
-        
-        
+
+
     def close(self):
         bs.containerWidget(edit=self._rootWidget,transition='outScale')
 
@@ -540,9 +540,9 @@ class SharePlaylistImportWindow(bsUI.PromoCodeWindow):
     def __init__(self,originWidget=None, onSuccessCallback=None):
         bsUI.PromoCodeWindow.__init__(self,modal=True,originWidget=originWidget)
         self._onSuccessCallback = onSuccessCallback
-        
+
     def _onImportResponse(self,response):
-        
+
         if response is None:
             bs.screenMessage(bs.Lstr(resource='errorText'),color=(1,0,0))
             bs.playSound(bs.getSound('error'))
@@ -554,8 +554,8 @@ class SharePlaylistImportWindow(bsUI.PromoCodeWindow):
             playlistTypeName = bs.Lstr(resource='playModes.freeForAllText')
         else:
             playlistTypeName = bs.Lstr(value=response['playlistType'])
-            
-            
+
+
         playlistTypeName
         bs.screenMessage(bs.Lstr(resource='importPlaylistSuccessText',
                                  subs=[('${TYPE}',playlistTypeName),('${NAME}',response['playlistName'])]),
@@ -564,7 +564,7 @@ class SharePlaylistImportWindow(bsUI.PromoCodeWindow):
         if self._onSuccessCallback is not None:
             self._onSuccessCallback()
         bs.containerWidget(edit=self._rootWidget,transition=self._transitionOut)
-        
+
     def _doEnter(self):
         bsInternal._addTransaction({'type':'IMPORT_PLAYLIST',
                                     'expireTime':time.time()+5,
@@ -572,5 +572,3 @@ class SharePlaylistImportWindow(bsUI.PromoCodeWindow):
                                    callback=bs.WeakCall(self._onImportResponse))
         bsInternal._runTransactions()
         bs.screenMessage(bs.Lstr(resource='importingText'))
-        
-        

@@ -9,7 +9,7 @@ from bsUtils import getLanguage, writeConfig, openURL, WeakCall, Call, animate, 
     Lstr, uni, utf8, playMusic, PopupText, getConfig, getNormalizedColor, isPointInBox, getTimeString,\
     printError, printErrorOnce, printException, getSharedObject, isBrowserLikelyAvailable, OnScreenTimer, OnScreenCountdown
 from bsGame import Team, OutOfBoundsMessage, DieMessage, StandMessage, PickUpMessage, DropMessage, PickedUpMessage,\
-    DroppedMessage, ShouldShatterMessage, ImpactDamageMessage, FreezeMessage, ThawMessage, HealMessage,  HitMessage,\
+    DroppedMessage, ShouldShatterMessage, ImpactDamageMessage, FreezeMessage, ThawMessage, HealMessage, BurnMessage, InvincibleMessage, TrackMessage, HockeyStartMessage, HockeyEndMessage, HitMessage,\
     Actor, NodeActor, Session, Activity, GameActivity
 from bsCoopGame import CoopSession, CoopGameActivity, Level
 from bsTeamGame import TeamBaseSession, FreeForAllSession, TeamsSession, TeamGameActivity, TeamGameResults

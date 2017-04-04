@@ -251,9 +251,13 @@ class SpazFactory(object):
 
         self.spazMaterial = bs.Material()
         self.rollerMaterial = bs.Material()
+        self.slippyrollerMaterial = bs.Material()
         self.punchMaterial = bs.Material()
         self.pickupMaterial = bs.Material()
         self.curseMaterial = bs.Material()
+        # Bacon added for Fire region
+        self.fireMaterial = bs.Material()
+        # Bacon added end
 
         footingMaterial = bs.getSharedObject('footingMaterial')
         objectMaterial = bs.getSharedObject('objectMaterial')
@@ -267,10 +271,19 @@ class SpazFactory(object):
             actions=(('message','ourNode','atConnect','footing',1),
                      ('message','ourNode','atDisconnect','footing',-1)))
 
+        self.slippyrollerMaterial.addActions(
+            conditions=('theyHaveMaterial',footingMaterial),
+            actions=(('message','ourNode','atConnect','footing',1),
+                     ('message','ourNode','atDisconnect','footing',-1)))
+        self.slippyrollerMaterial.addActions(actions=('modifyPartCollision','friction',0.01))
+
         self.spazMaterial.addActions(
             conditions=('theyHaveMaterial',footingMaterial),
             actions=(('message','ourNode','atConnect','footing',1),
                      ('message','ourNode','atDisconnect','footing',-1)))
+
+
+
         # punches
         self.punchMaterial.addActions(
             conditions=('theyAreDifferentNodeThanUs',),
@@ -288,6 +301,18 @@ class SpazFactory(object):
             conditions=(('theyAreDifferentNodeThanUs',),'and',('theyHaveMaterial',playerMaterial)),
             actions=('message','ourNode','atConnect',_CurseExplodeMessage()))
 
+        # Bacon added for Fire region
+        self.fireMaterial.addActions(
+            conditions=("theyHaveMaterial",bs.getSharedObject("objectMaterial")),
+            actions=(("modifyPartCollision","collide",True),
+                     ("modifyPartCollision","physical",False),
+                     ('message','theirNode','atConnect',bs.BurnMessage())))
+        self.fireMaterial.addActions(
+             conditions=((('weAreYoungerThan',100),'or',('theyAreYoungerThan',100)),
+                         'and',('theyHaveMaterial',playerMaterial)),
+                         actions=(('modifyNodeCollision','collide',False)))
+        # Bacon added end
+
 
         self.footImpactSounds = (bs.getSound('footImpact01'), # Flesh characters
                                  bs.getSound('footImpact02'),
@@ -299,6 +324,11 @@ class SpazFactory(object):
         self.footRollSound = bs.getSound('scamper01')
 
         self.rollerMaterial.addActions(
+            conditions=('theyHaveMaterial',footingMaterial),
+            actions=(('impactSound',self.footImpactSounds,1,0.2),
+                     ('skidSound',self.footSkidSound,20,0.3),
+                     ('rollSound',self.footRollSound,20,10.0)))
+        self.slippyrollerMaterial.addActions(
             conditions=('theyHaveMaterial',footingMaterial),
             actions=(('impactSound',self.footImpactSounds,1,0.2),
                      ('skidSound',self.footSkidSound,20,0.3),
@@ -376,16 +406,58 @@ class Spaz(bs.Actor):
     """
 
     pointsMult = 1
-    curseTime = 8000
+
+    #jasonhu5
+    curseTime = 5000
+    # curseTime = 8000
+    #
 
     defaultBombCount = 1
-    # defaultBombType = 'normal'
     defaultBombType = 'normal'
     defaultBlastRadius = 2.0
     defaultBoxingGloves = False
     defaultShields = False
+    nonebombsuperpowerList = ('shield', 'superPunch', 'speed')
 
-    def __init__(self,color=(1,1,1),highlight=(0.5,0.5,0.5),character="Spaz",sourcePlayer=None,startInvincible=True,canAcceptPowerups=True,powerupsExpire=False):
+    # jasonhu5: used for teleporting
+    _teleportal1 = (0.0, 0.0, 0.0)
+    _teleportal2 = (0.0, 0.0, 0.0)
+    _portal1 = None
+    _portal2 = None
+    _light1 = None
+    _light2 = None
+
+    def rePositionPlayer(self,player,position):
+        player.actor.handleMessage(bs.StandMessage(position,random.uniform(0,360)))
+
+    def _handleTeleport(self, pos):
+        n = bs.getCollisionInfo("opposingNode")
+        spaz = n.getDelegate()
+
+        if isinstance(spaz, bs.PlayerSpaz):
+            player = spaz.getPlayer()
+            # bs.screenMessage(player.getName())
+            if player is None:
+                bs.printError('FIXME: getPlayer() should no longer ever be returning None')
+                return
+            if not player.exists(): return
+
+            p = self.node.positionForward
+            c = self.node.positionCenter
+            d = (c[0]-p[0], c[1]-p[1], c[2]-p[2])
+
+            newpos = (pos[0] + 3*d[0], pos[1], pos[2] + 3*d[2])
+            self.rePositionPlayer(player, newpos)
+            return
+
+    def _handleTeleport1(self):
+        self._handleTeleport(self._teleportal2)
+
+    def _handleTeleport2(self):
+        self._handleTeleport(self._teleportal1)
+    #
+
+    def __init__(self,color=(1,1,1),highlight=(0.5,0.5,0.5),character="Spaz",sourcePlayer=None,startInvincible=True,canAcceptPowerups=True,powerupsExpire=False,cooldownTime=0,superpower=None,bombCount=1,hitPointsMax=1000,hitPoints=1000,shieldHitPointsMax=800):
         """
         Create a new spaz with the requested color, character, etc.
         """
@@ -412,9 +484,29 @@ class Spaz(bs.Actor):
         self._cursed = False
         self._connectedToPlayer = None
 
-        #Added for fly
+        #Added for extra_info
         self.flyDirectionZ = 0.0
         self.flyDirectionX = 0.0
+        self.cooldownTime = cooldownTime
+        self.reshieldtime = 0
+        self.cooldown=True
+        #Added End
+        # jasonhu5
+        self._teleportal1 = None
+        self._teleportal2 = None
+        self._port1Material = bs.Material()
+        self._port1Material.addActions(
+            conditions=("theyHaveMaterial",bs.getSharedObject('playerMaterial')),
+            actions=(("modifyPartCollision","collide",True),
+                     ("modifyPartCollision","physical",False),
+                     ("call","atConnect",self._handleTeleport1)))
+
+        self._port2Material = bs.Material()
+        self._port2Material.addActions(
+            conditions=("theyHaveMaterial",bs.getSharedObject('playerMaterial')),
+            actions=(("modifyPartCollision","collide",True),
+                     ("modifyPartCollision","physical",False),
+                     ("call","atConnect",self._handleTeleport2)))
         #
 
         materials = [factory.spazMaterial,bs.getSharedObject('objectMaterial'),bs.getSharedObject('playerMaterial')]
@@ -459,6 +551,7 @@ class Spaz(bs.Actor):
                                       'pickupMaterials':(factory.pickupMaterial,bs.getSharedObject('pickupMaterial')),
                                       'invincible':startInvincible,
                                       'sourcePlayer':sourcePlayer})
+
         self.shield = None
 
         if startInvincible:
@@ -466,8 +559,8 @@ class Spaz(bs.Actor):
                 if node.exists(): setattr(node,attr,val)
             bs.gameTimer(1500,bs.Call(_safeSetAttr,self.node,'invincible',False))
 
-        self.hitPoints = 1000
-        self.hitPointsMax = 1000
+        self.hitPoints = hitPoints
+        self.hitPointsMax = hitPointsMax
         #How much HP you can receive from Overdrive powerup
         self.hitPointsOverdrive = 1000
         #How much HP you need to have until you'll be cursed
@@ -478,11 +571,28 @@ class Spaz(bs.Actor):
         # This value checks how much damage you received. Important for the achievement.
         self.hitPointsAchievement = 0
 
-        self.bombCount = self.defaultBombCount
-        self._maxBombCount = self.defaultBombCount
+        # Bacon Changed Start
+        self.bombCount = bombCount
+        self._maxBombCount = bombCount
+        self.superpower = superpower
+        self.shieldHitPointsMax = shieldHitPointsMax
+        self.uniquecolor = None
+        self.scale = 1.3
+
+        # Bacon Changed Start
         self.bombTypeDefault = self.defaultBombType
+        self.cooldownAnimation = None
+        self.superpowerList = []
+
+        # Original
+        # self.bombCount = self.defaultBombCount
+        # self._maxBombCount = self.defaultBombCount
+        # self.bombTypeDefault = self.defaultBombType
+        # Bacon Changed End
+
         self.bombType = self.bombTypeDefault
         self.landMineCount = 0
+        self.invincibleCount = 0
         self.grenadeCount = 0
         self.healBombCount = 0
         self.hijumpCount = 0
@@ -492,8 +602,6 @@ class Spaz(bs.Actor):
         self._hasBoxingGloves = False
         if self.defaultBoxingGloves:
             self.equipBoxingGloves()
-        if self.run:
-            self.equipSpeed()
         self.lastPunchTime = 0
         self.frozen = False
         self.burning = False
@@ -704,7 +812,18 @@ class Spaz(bs.Actor):
         self.node.bombPressed = True
         if not self.node.holdNode.exists():
             #Bacon added Start
-                self.dropBomb()
+            if not self.hasSuperpower('landMine') and not self.hasSuperpower('LayonHands'):
+                if self.cooldownTime!=0:
+                    if not self.cooldown:
+                        return None
+                    else:
+                        self.cooldown = False
+                        self.showCoolDown()
+                        def _resetCoolDown():
+                            self.cooldown = True
+                        bs.gameTimer(self.cooldownTime,bs.Call(_resetCoolDown))
+            self.dropBomb()
+            # bsUtils.showDamageCount('-'+str(int(100))+"%",self.node.positionCenter,self.node.positionForward)
             # self.dropBomb()
             #Bacon added End
 
@@ -816,12 +935,12 @@ class Spaz(bs.Actor):
                 if self.curseTime == -1:
                     self.node.curseDeathTime = -1
                 else:
-                    self.node.curseDeathTime = bs.getGameTime()+8000
-                    self.curseExplodeTimer = bs.Timer(8000,bs.WeakCall(self.curseExplode))
+                    self.node.curseDeathTime = bs.getGameTime()+self.curseTime
+                    self.curseExplodeTimer = bs.Timer(self.curseTime,bs.WeakCall(self.curseExplode))
         else:
             if not self.curseTime == -1:
-                self.node.curseDeathTime = bs.getGameTime()+8000
-                self.curseExplodeTimer = bs.Timer(8000,bs.WeakCall(self.curseExplode))
+                self.node.curseDeathTime = bs.getGameTime()+self.curseTime
+                self.curseExplodeTimer = bs.Timer(self.curseTime,bs.WeakCall(self.curseExplode))
 
     def equipBoxingGloves(self):
         """
@@ -852,8 +971,9 @@ class Spaz(bs.Actor):
             if node.exists(): setattr(node,attr,val)
         bs.gameTimer(1,bs.Call(_safeSetAttr,self.node,'hockey',True))
         bs.playSound(factory.speedUpSound,position=self.node.position)
-        self._hasBoxingGloves = False
-        self.node.boxingGloves = 0
+        if not self.hasSuperpower('superPunch'):
+            self._hasBoxingGloves = False
+            self.node.boxingGloves = 0
         self._punchPowerScale = 1.1
         self._punchCooldown = 350
 
@@ -906,13 +1026,22 @@ class Spaz(bs.Actor):
                     self.node.connectAttr('position',self.shieldSound,'position')
             # Outside Coop sessions, increase the shield's health, to compensate for the decaying mechanic. Since in Coop sessions the shield doesn't decay, I leave its value to default 600.
             if not isinstance(bs.getSession(),bs.CoopSession):
-                self.shieldHitPoints = self.shieldHitPointsMax = 800
+                # Bacon added start
+                # self.shieldHitPoints = self.shieldHitPointsMax = 800
+                self.shieldHitPoints = self.shieldHitPointsMax
+                # Bacon added end
             else:
                 self.shieldHitPoints = self.shieldHitPointsMax = 600
             self.shield.hurt = 0
             bs.playSound(factory.shieldUpSound,1.0,position=self.node.position)
-            if not isinstance(bs.getSession(),bs.CoopSession):
-                self.shieldDecayTimer = bs.Timer(20000,bs.WeakCall(self.shieldDecay)) # Only decay shields outside of Coop sessions
+            #Bacon added Begin
+            if not self.hasSuperpower('shield'):
+                if not isinstance(bs.getSession(),bs.CoopSession):
+                    self.shieldDecayTimer = bs.Timer(20000,bs.WeakCall(self.shieldDecay)) # Only decay shields outside of Coop sessions
+            #Original
+            #if not isinstance(bs.getSession(),bs.CoopSession):
+                # self.shieldDecayTimer = bs.Timer(20000,bs.WeakCall(self.shieldDecay)) # Only decay shields outside of Coop sessions
+            #Bacon added end
         else: # If the player is not given
             if self.shield is None:
                 self.shield = bs.newNode('shield',owner=self.node,
@@ -930,13 +1059,22 @@ class Spaz(bs.Actor):
                 self.node.connectAttr('position',self.shieldSound,'position')
             # Outside Coop sessions, increase the shield's health, to compensate for the decaying mechanic. Since in Coop sessions the shield doesn't decay, I leave its value to default 600.
             if not isinstance(bs.getSession(),bs.CoopSession):
-                self.shieldHitPoints = self.shieldHitPointsMax = 800
+                # Bacon added start
+                # self.shieldHitPoints = self.shieldHitPointsMax = 800
+                self.shieldHitPoints = self.shieldHitPointsMax
+                # Bacon added end
             else:
                 self.shieldHitPoints = self.shieldHitPointsMax = 600
             self.shield.hurt = 0
             bs.playSound(factory.shieldUpSound,1.0,position=self.node.position)
-            if not isinstance(bs.getSession(),bs.CoopSession):
-                self.shieldDecayTimer = bs.Timer(20000,bs.WeakCall(self.shieldDecay)) # Only decay shields outside of Coop sessions
+            #Bacon added Begin
+            if not self.hasSuperpower('shield'):
+                if not isinstance(bs.getSession(),bs.CoopSession):
+                    self.shieldDecayTimer = bs.Timer(20000,bs.WeakCall(self.shieldDecay)) # Only decay shields outside of Coop sessions
+            #Original
+            #if not isinstance(bs.getSession(),bs.CoopSession):
+                # self.shieldDecayTimer = bs.Timer(20000,bs.WeakCall(self.shieldDecay)) # Only decay shields outside of Coop sessions
+            #Bacon added end
 
     def shieldDecay(self):
         factory = self.getFactory()
@@ -1162,7 +1300,7 @@ class Spaz(bs.Actor):
                                             color=(1,0.3,0.3),
                                             scale=self.scale,
                                             position=self.node.position).autoRetain()
-                if self.powerupsExpire:
+                if self.powerupsExpire and not self.hasSuperpower('superPunch'):
                     self.node.boxingGlovesFlashing = 0
                     self.node.miniBillboard3Texture = tex
                     t = bs.getGameTime()
@@ -1179,7 +1317,7 @@ class Spaz(bs.Actor):
                                             color=(0.75,1,0.1),
                                             scale=self.scale,
                                             position=self.node.position).autoRetain()
-                if self.powerupsExpire:
+                if self.powerupsExpire and not self.hasSuperpower('speed'):
                     self.node.miniBillboard3Texture = tex
                     t = bs.getGameTime()
                     self.node.miniBillboard3StartTime = t
@@ -1288,6 +1426,7 @@ class Spaz(bs.Actor):
 
         elif isinstance(m,bs.FreezeMessage):
             if not self.node.exists(): return
+            if self.hasSuperpower('superice'): return
             if self.node.invincible == True:
                 bs.playSound(self.getFactory().blockSound,1.0,position=self.node.position)
                 return
@@ -1296,12 +1435,127 @@ class Spaz(bs.Actor):
                 if self.healBombCount != 0: # Don't freeze the players that have Healing Bombs in their inventory. Instead of freezing, remove one from the stock.
                     self.setHealBombCount(self.healBombCount-1)
                 else:
+                    #Bacon add begin
+                    #We want the ice bomb be able to extinguish the fire
+                    if self.burning:
+                        self.burning = False
+                        return
+                    #Bacon add end
+
                     self.frozen = True
                     self.node.frozen = 1
                     bs.gameTimer(5000,bs.WeakCall(self.handleMessage,bs.ThawMessage()))
                     # instantly shatter if we're already dead (otherwise its hard to tell we're dead)
                     if self.hitPoints <= 0:
                         self.shatter()
+
+        # Bacon added for Burning
+        elif isinstance(m,bs.BurnMessage):
+            if not self.node.exists(): return
+            if self.hasSuperpower('superfire'): return
+            if self.node.invincible == True:
+                bs.playSound(self.getFactory().blockSound,1.0,position=self.node.position)
+                return
+            if self.shield is not None: return
+            if self.healBombCount != 0:
+                self.setHealBombCount(self.healBombCount-1)
+            else:
+                if not self.burning:
+                    #We want the fire bomb be able to Thaw the spaz
+                    if self.frozen == True:
+                        self.handleMessage(bs.ThawMessage())
+                        return
+
+                    self.burning = 30
+                    setattr(self.node,'curseDeathTime',-1)
+
+                    if self.hitPoints <= 0:
+                        self.shatter()
+
+                    def _burnself(spaz):
+                        if spaz.node.exists():
+                            if spaz.burning:
+                                if spaz.burning % 10 == 0:
+                                    bsUtils.PopupText(('Burning'),
+                                                            color=(0.5,0.5,0),
+                                                            scale=spaz.scale,
+                                                            position=spaz.node.position).autoRetain()
+                                    spaz.hitPoints -= spaz.hitPointsMax/50
+                                    spaz.node.hurt = 1.0 - spaz.hitPoints/spaz.hitPointsMax
+
+                                if spaz.hitPoints <= 0:
+                                    spaz.shatter()
+                                else:
+                                    factory = SpazFactory()
+                                    spaz.fireLight = bs.newNode('light',
+                                            attrs={'position':spaz.node.position,
+                                                    'color': (0.5,0.5,0),
+                                                    'radius': 0.1,
+                                                    'volumeIntensityScale': 0.05})
+                                    bs.animate(spaz.fireLight,'intensity',{0:0,250:2.0,1000:1.8, 1500:0.5, 2000:0},loop=False)
+                                    fireAttack = bs.newNode('region',
+                                                attrs={'position':(spaz.node.position[0],spaz.node.position[1]-0.1,spaz.node.position[2]), # move down and squished a bit so the fire affects the floor
+                                                        'scale':(1.0,1.5,1.0),
+                                                        'type':'sphere',
+                                                        'materials':(factory.fireMaterial,bs.getSharedObject('attackMaterial'))})
+                                    bs.gameTimer(1000,fireAttack.delete)
+                                    spaz.burning -= 1
+                                    bs.gameTimer(150,bs.Call(_burnself, spaz))
+                            else:
+                                spaz.sound = None
+                                setattr(spaz.node,'curseDeathTime',0)
+                    bs.gameTimer(50,bs.Call(_burnself, self))
+                else:
+                    self.burning = 30
+        # Bacon added for Burning end
+
+        # Bacon added for Tracking
+        elif isinstance(m,bs.TrackMessage):
+            if not self.node.exists(): return
+            def _droptrackingbomb(spaz, sourcePlayer):
+                if not self.node.exists(): return
+                p = spaz.node.positionForward
+                v = spaz.node.velocity
+                bomb = bs.Bomb(position=(p[0],p[1] + 10,p[2]),
+                               velocity=(v[0],v[1],v[2]),
+                               bombType='impact',
+                               blastRadius=2.0,
+                               sourcePlayer=sourcePlayer,
+                               owner=sourcePlayer.actor.node).autoRetain()
+            for i in (500,2000,3500):
+                bs.gameTimer(i, bs.Call(_droptrackingbomb, self, m.sourcePlayer))
+        # Bacon added for Tracking end
+
+        # Bacon added for Invincible
+        elif isinstance(m,bs.InvincibleMessage):
+            if not self.node.exists(): return
+            def _safeSetAttr(node,attr,val):
+                if node.exists(): setattr(node,attr,val)
+            bs.gameTimer(1,bs.Call(_safeSetAttr,self.node,'invincible',True))
+            bs.gameTimer(5000,bs.Call(_safeSetAttr,self.node,'invincible',False))
+        # Bacon added for Invincible end
+
+        # Bacon added for HockeyStart
+        elif isinstance(m,bs.HockeyStartMessage):
+            if not self.node.exists(): return
+            factory = self.getFactory()
+            materials = getattr(self.node,'rollerMaterials')
+            setattr(self.node,'rollerMaterials',tuple(
+                m if m!=factory.rollerMaterial
+                else factory.slippyrollerMaterial
+                for m in materials))
+        # Bacon added for HockeyStart end
+
+        # Bacon added for HockeyEnd
+        elif isinstance(m,bs.HockeyEndMessage):
+            if not self.node.exists(): return
+            factory = self.getFactory()
+            materials = getattr(self.node,'rollerMaterials')
+            setattr(self.node,'rollerMaterials',tuple(
+                m if m!=factory.slippyrollerMaterial
+                else factory.rollerMaterial
+                for m in materials))
+        # Bacon added for HockeyEnd end
 
         elif isinstance(m,bs.ThawMessage):
             if self.frozen and not self.shattered and self.node.exists():
@@ -1352,7 +1606,16 @@ class Spaz(bs.Actor):
             mag = m.magnitude * self._impactScale
             velocityMag = m.velocityMagnitude * self._impactScale
 
-            damageScale = -0.00001 if m.hitSubType == 'knocker' or m.hitSubType == 'shockwave' else 0.22 # Knocker deals so much less damage
+            damageScale = 0.05 if m.hitSubType == 'knocker' else 0.22 # Knocker deals so much less damage
+
+            #Bacon added Begin
+            if m.hitSubType == 'shockwave':
+                damageScale = 0
+            if m.hitSubType == 'nodamage':
+                damageScale = 0.005
+            elif m.hitSubType == 'laser':
+                damageScale = 50
+            #Bacon added end
 
             # if they've got a shield, deliver it to that instead..
             if self.shield is not None:
@@ -1376,6 +1639,8 @@ class Spaz(bs.Actor):
                     # fixme - transition out perhaps?..
                     self.shield.delete()
                     self.shield = None
+                    if self.hasSuperpower('shield'):
+                        self.shieldsup()
                     bs.playSound(self.getFactory().shieldDownSound,1.0,position=self.node.position)
                     self.shieldSound.delete()
                     # emit some cool lookin sparks when the shield dies
@@ -1565,6 +1830,21 @@ class Spaz(bs.Actor):
                     bs.playSound(self.getFactory().singlePlayerDeathSound)
                 self.node.dead = True
                 bs.gameTimer(2000,self.node.delete)
+            if self.cooldownAnimation != None:
+                self.cooldownAnimation.delete()
+                self.cooldownAnimation = None
+
+            # jasonhu5
+            self._portal1 = None
+            self._portal2 = None
+            if self._light1:
+                self._light1.delete()
+            if self._light2:
+                self._light2.delete()
+            self._light1 = None
+            self._light2 = None
+            self._timer = None
+            #
 
         elif isinstance(m,bs.OutOfBoundsMessage):
             if self._cursed: self.sound.delete() # Stop the curse sound
@@ -1608,6 +1888,13 @@ class Spaz(bs.Actor):
                 v = self.node.punchMomentumLinear
 
                 self._punchedNodes.add(node)
+
+                #Bacon added Begin
+                hitSubType = 'superPunch' if self._hasBoxingGloves else 'default'
+                if self.hasSuperpower('superPunch'):
+                    punchMomentumAngular*=20
+                    hitSubType = 'nodamage'
+                #Bacon added Begin
                 node.handleMessage(bs.HitMessage(pos=t,
                                                  velocity=v,
                                                  magnitude=punchPower*punchMomentumAngular*110.0,
@@ -1617,7 +1904,8 @@ class Spaz(bs.Actor):
                                                  sourcePlayer=self.sourcePlayer,
                                                  forceDirection = punchDir,
                                                  hitType='punch',
-                                                 hitSubType='superPunch' if self._hasBoxingGloves else 'default'))
+                                                 hitSubType=hitSubType))
+                #Bacon added Begin
 
                 # also apply opposite to ourself for the first punch only
                 # ..this is given as a constant force so that it is more noticable for slower punches
@@ -1652,6 +1940,151 @@ class Spaz(bs.Actor):
         else:
             bs.Actor.handleMessage(self,m)
 
+    """
+    Bacon added function
+    Used to equipshield for 'shield' superpower
+    """
+    def shieldsup(self, helpBonus=False):
+        def _delay_shieldsup(spaz):
+            try: player = bs.PlayerSpaz.getPlayer(spaz)
+            except Exception: player = None
+            if spaz.node.exists():
+                spaz.equipShields(player)
+        cdTime = self.reshieldtime
+        if helpBonus:
+            cdTime = cdTime/4
+        self.showCoolDown(cooldownTime=cdTime)
+        bs.gameTimer(cdTime,bs.Call(_delay_shieldsup, self))
+
+    """
+    Bacon added function
+    Used to show Cooldown Bar
+    """
+    def showCoolDown(self, cooldownTime=None):
+        cdTime = self.cooldownTime
+        if cooldownTime!=None:
+            cdTime = cooldownTime
+        if self.node.exists() and cdTime != 0:
+            self.cooldownAnimation = bs.newNode('shield',owner=self.node,
+                                    attrs={'color':(0,0,0),'radius':0.01})
+            self.cooldownAnimation.hurt = 1
+            self.node.connectAttr('positionCenter',self.cooldownAnimation,'position')
+            def _increaseCharge(spaz):
+                if spaz.node.exists() and spaz.cooldownAnimation != None:
+                    spaz.cooldownAnimation.hurt -= 0.1
+            for i in range(10):
+                bs.gameTimer(cdTime/10*i,bs.Call(_increaseCharge, self))
+            def _deleteCharge(spaz):
+                spaz.cooldownAnimation = None
+            bs.gameTimer(cdTime,bs.Call(_deleteCharge, self))
+
+    """
+    Bacon added function
+    Used to set superpower for actors
+    """
+    def setAttributes(self):
+        if self.uniquecolor == None:
+            try: player = bs.PlayerSpaz.getPlayer(self)
+            except Exception: player = None
+            self.uniquecolor = player.color
+            # bs.screenMessage(str(self.uniquecolor))
+            if isinstance(bs.getSession(),bs.TeamsSession): # Color the shields based on the team you're in (if it's a team game, that is)
+                playerTeam = player.getTeam().getID()
+                if playerTeam == 0:
+                    self.uniquecolor = (0.2,0.2,5.0)
+                elif playerTeam == 1:
+                    self.uniquecolor = (3.0,0.2,0.2)
+            # bs.screenMessage(str(self.uniquecolor))
+        if self.superpower != None and self.superpower != 'absorb':
+            if self.superpower == 'speed':
+                if self.getPlayer() != None:
+                    self.equipSpeed()
+            elif self.superpower == 'shield':
+                try: player = bs.PlayerSpaz.getPlayer(self)
+                except Exception: player = None
+                self.reshieldtime = self.cooldownTime
+                self.cooldownTime = 0
+                self.equipShields(player)
+            elif self.superpower == 'superPunch':
+                self.equipBoxingGloves()
+            elif self.superpower == 'landMine':
+                self.setLandMineCount(3)
+            elif self.superpower == 'LayonHands':
+                self.restoreHealBomb()
+            else:
+                self.bombTypeDefault = self.superpower
+        self.bombType = self.bombTypeDefault
+
+    """
+    a sepical function designed for healer!
+    """
+    def restoreHealBomb(self):
+        if not self.node.exists(): return
+        if self.invincibleCount == 1:
+            return
+        self.showCoolDown()
+        bs.gameTimer(self.cooldownTime, bs.Call(Spaz.addHealBomb, self))
+
+    def addHealBomb(self):
+        if not self.node.exists(): return
+        if self.healBombCount == 3:
+            self.setHealBombCount(0)
+            self.setinvincibleBombCount(1)
+        else:
+            self.setHealBombCount(self.healBombCount+1)
+            self.restoreHealBomb()
+
+    """
+    a sepical function designed for Miner!
+    """
+    def restoreLandMine(self):
+        self.showCoolDown()
+        def _restorelandMineCount(spaz):
+            if spaz.node.exists():
+                spaz.setLandMineCount(3)
+        bs.gameTimer(self.cooldownTime, bs.Call(_restorelandMineCount,self))
+
+    """
+    a special function designed for ABSORB superpower
+    """
+    def absorb(self, superpower, cooldownTime):
+        if superpower in self.superpowerList:
+            return
+        else:
+            if superpower in Spaz.nonebombsuperpowerList:
+                self.superpowerList.append(superpower)
+                if superpower == 'speed':
+                    if self.getPlayer() != None:
+                        self.equipSpeed()
+                elif superpower == 'shield':
+                    try: player = bs.PlayerSpaz.getPlayer(self)
+                    except Exception: player = None
+                    self.reshieldtime = cooldownTime
+                    self.equipShields(player)
+                elif superpower == 'superPunch':
+                    self.equipBoxingGloves()
+            else:
+                self.superpowerList = list(set(self.superpowerList).intersection(Spaz.nonebombsuperpowerList))
+                self.superpowerList.append(superpower)
+                if superpower == 'landMine':
+                    self.setLandMineCount(3)
+                elif superpower == 'LayonHands':
+                    self.restoreHealBomb()
+                else:
+                    self.bombTypeDefault = superpower
+                    self.bombType = self.bombTypeDefault
+                self.cooldownTime = cooldownTime
+
+
+    """
+    return the boolean value that whether the spaz has a specific superpower
+    """
+    def hasSuperpower(self, superpower):
+        if self.superpower != 'absorb':
+            return self.superpower == superpower
+        else:
+            return superpower in self.superpowerList
+
     def dropBomb(self):
         """
         Tell the spaz to drop one of his bombs, and returns
@@ -1659,19 +2092,28 @@ class Spaz(bs.Actor):
         If the spaz has no bombs or is otherwise unable to
         drop a bomb, returns None.
         """
-
-        if (self.landMineCount <= 0 and self.healBombCount <= 0 and self.grenadeCount <= 0 and self.hijumpCount <= 0 and self.bombCount <= 0) or self.frozen: return
+        if (self.landMineCount <= 0 and self.healBombCount <= 0 and self.grenadeCount <= 0 and self.hijumpCount <= 0 and self.invincibleCount <= 0 and self.bombCount <= 0) or self.frozen: return
         p = self.node.positionForward
+        c = self.node.positionCenter
         v = self.node.velocity
+        d = (c[0]-p[0],c[1]-p[1],c[2]-p[2])
 
         if self.landMineCount > 0:
             droppingBomb = False
             self.setLandMineCount(self.landMineCount-1)
             bombType = 'landMine'
+            if self.hasSuperpower('landMine') and self.landMineCount == 0:
+                self.restoreLandMine()
         elif self.healBombCount > 0:
             droppingBomb = False
             self.setHealBombCount(self.healBombCount-1)
             bombType = 'healing'
+        elif self.invincibleCount > 0:
+            droppingBomb = False
+            self.setinvincibleBombCount(self.invincibleCount-1)
+            if self.hasSuperpower('LayonHands'):
+                self.restoreHealBomb()
+            bombType = 'invincible'
         elif self.grenadeCount > 0:
             droppingBomb = False
             self.setGrenadeCount(self.grenadeCount-1)
@@ -1706,6 +2148,8 @@ class Spaz(bs.Actor):
             for i in range(offsetdirections):
                 offsetpairs.append((offsetradius * math.cos(2 * math.pi * i / offsetdirections),offsetradius * math.sin(2 * math.pi * i / offsetdirections)))
 
+        bomb = None
+
         if bombType == 'shockwave':
             for (x,z) in offsetpairs:
                 bomb = bs.Bomb(position=(p[0] + x,p[1] + offsety,p[2] - z),
@@ -1714,6 +2158,99 @@ class Spaz(bs.Actor):
                                blastRadius=self.blastRadius,
                                sourcePlayer=self.sourcePlayer,
                                owner=self.node).autoRetain()
+        elif bombType == 'puppet':
+            # def gainControlsBack(self):
+            #     self._player.setActor(self)
+            #     self.connectControlsToPlayer(self._player)
+
+            offsetx = 8*d[0] + 0.1*v[0]
+            offsety = 1.0
+            offsetz = 8*d[2] + 0.1*v[2]
+            spaz = SuicideBomber()
+            spaz.handleMessage(bs.StandMessage((p[0] + offsetx, p[1] + offsety, p[2] + offsetz),random.uniform(0,360)))
+            def _safeSetAttr(node,attr,val):
+                if node.exists(): setattr(node,attr,val)
+            bs.gameTimer(1,bs.Call(_safeSetAttr,spaz.node,'hockey',True))
+            self._player.setActor(spaz)
+            self.onMoveUpDown(0)
+            self.onMoveLeftRight(0)
+            self._onHoldPositionRelease()
+            self.onJumpRelease()
+            self.onPickUpRelease()
+            self.onPunchRelease()
+            self.onBombRelease()
+            self.onRun(0.0)
+            self.onFlyRelease()
+            spaz.connectControlsToPlayer(self._player, self)
+
+            # self._timer = bs.Timer(self.curseTime + 500, bs.Call(gainControlsBack, self))
+        elif bombType == 'laser':
+            scale = 1.0
+            offsetx = 6*d[0] + 0.1*v[0]
+            offsety = 1.0
+            offsetz = 6*d[2] + 0.1*v[2]
+            stepx = 0.8*d[0]
+            stepz = 0.8*d[2]
+            for i in range(45):
+                bomb = bs.Bomb(position=(offsetx + p[0] + (scale * i * stepx),p[1] + 0.0, offsetz + p[2] + (scale * i * stepz)),
+                               velocity=(0,0,0),
+                               bombType=bombType,
+                               blastRadius=self.blastRadius,
+                               sourcePlayer=self.sourcePlayer,
+                               owner=self.node).autoRetain()
+        elif self.hasSuperpower('superice') or self.hasSuperpower('superfire'):
+            offsetx = 20*d[0] + 0.1*v[0]
+            offsety = 1.0
+            offsetz = 20*d[2] + 0.1*v[2]
+            bomb = bs.Bomb(position=(offsetx + p[0], offsety + p[1], offsetz + p[2]),
+                           velocity=(0,0,0),
+                           bombType=bombType,
+                           blastRadius=self.blastRadius,
+                           sourcePlayer=self.sourcePlayer,
+                           owner=self.node).autoRetain()
+        elif bombType == 'teleport':
+            portScale = [0.1, 0.1, 0.1]
+            offsetx = -1
+            offsetz = 0
+            if self._teleportal1 == None or self._teleportal2 != None:
+                bs.screenMessage("first portal")
+                self._portal1 = None
+                self._portal2 = None
+                self._teleportal1 = None
+                self._teleportal2 = None
+                if self._light1:
+                    self._light1.delete()
+                if self._light2:
+                    self._light2.delete()
+                self._light1 = None
+                self._light2 = None
+
+                # record position for first gate
+                self._teleportal1 = p
+                self._light1 = bs.newNode("flash",
+                                   attrs={'position':self._teleportal1,
+                                          'size':0.17+0.17,
+                                          'color': self.uniquecolor})
+
+            # second portal
+            else:
+                bs.screenMessage("second portal")
+                self._teleportal2 = p
+                self._portal1 = bs.NodeActor(bs.newNode('region',
+                                                    attrs={'position':self._teleportal1,
+                                                           'scale':portScale,
+                                                           'type': 'box',
+                                                           'materials':[self._port1Material]}))
+                self._portal2 = bs.NodeActor(bs.newNode('region',
+                                                    attrs={'position':self._teleportal2,
+                                                           'scale':portScale,
+                                                           'type': 'box',
+                                                           'materials':[self._port2Material]}))
+                self._light2 = bs.newNode('flash',
+                                           attrs={'position':self._teleportal2,
+                                                  'size':0.17+0.17,
+                                                  'color': self.uniquecolor})
+
         else:
             bomb = bs.Bomb(position=(p[0] + offsetx,p[1] + offsety,p[2] - offsetz),
                            velocity=(v[0],v[1],v[2]),
@@ -1728,12 +2265,12 @@ class Spaz(bs.Actor):
     #                   sourcePlayer=self.sourcePlayer,
     #                   owner=self.node).autoRetain()
         # Bacon Added Ended
+        if bombType != 'shockwave' and bombType != 'teleport' and bombType != 'laser' and bombType != 'puppet' and bombType != 'superice' and bombType != 'superfire':
+            if droppingBomb:
+                self.bombCount -= 1
+                bomb.node.addDeathAction(bs.WeakCall(self.handleMessage,_BombDiedMessage()))
 
-        if droppingBomb:
-            self.bombCount -= 1
-            bomb.node.addDeathAction(bs.WeakCall(self.handleMessage,_BombDiedMessage()))
-
-        if bombType != 'shockwave':
+        if bombType != 'shockwave' and bombType != 'teleport' and bombType != 'laser' and bombType != 'puppet' and bombType != 'superice' and bombType != 'superfire':
             self._pickUp(bomb.node)
 
         for c in self._droppedBombCallbacks: c(self,bomb)
@@ -1790,6 +2327,18 @@ class Spaz(bs.Actor):
             if self.healBombCount != 0:
                 self.node.counterText = 'x'+str(self.healBombCount)
                 self.node.counterTexture = bs.Powerup.getFactory().texHealBombs
+            else:
+                self.node.counterText = ''
+
+    def setinvincibleBombCount(self,count):
+        """
+        Set the number of invincible bomb this spaz is carrying.
+        """
+        self.invincibleCount = count
+        if self.node.exists():
+            if self.invincibleCount != 0:
+                self.node.counterText = 'x'+str(self.invincibleCount)
+                self.node.counterTexture = bs.Powerup.getFactory().texHealth
             else:
                 self.node.counterText = ''
 
@@ -1886,6 +2435,8 @@ class Spaz(bs.Actor):
         elif self.bombType == 'healing': return bombFactory.texHealBombs
         elif self.bombType == 'hijump': return bombFactory.texHijump
         elif self.bombType == 'speed': return bombFactory.texSpeed
+        elif self.bombType == 'grenade': return bombFactory.texGrenades
+        elif self.bombType == 'knocker': return bombFactory.texKnockerBombs
         else: raise Exception()
 
     def _flashBillboard(self,tex):
@@ -2035,7 +2586,7 @@ class PlayerSpaz(Spaz):
     """
 
 
-    def __init__(self,color=(1,1,1),highlight=(0.5,0.5,0.5),character="Spaz",player=None,powerupsExpire=True):
+    def __init__(self,color=(1,1,1),highlight=(0.5,0.5,0.5),character="Spaz",player=None,powerupsExpire=True,canAcceptPowerups=True,cooldownTime=0,superpower=None,bombCount=1,hitPointsMax=1000,hitPoints=1000,shieldHitPointsMax=800):
         """
         Create a spaz for the provided bs.Player.
         Note: this does not wire up any controls;
@@ -2044,11 +2595,7 @@ class PlayerSpaz(Spaz):
         # convert None to an empty player-ref
         if player is None: player = bs.Player(None)
 
-        Spaz.run = True
-
-        Spaz.__init__(self,color=color,highlight=highlight,character=character,sourcePlayer=player,startInvincible=True,powerupsExpire=powerupsExpire)
-
-        Spaz.run = False
+        Spaz.__init__(self,color=color,highlight=highlight,character=character,sourcePlayer=player,startInvincible=True,powerupsExpire=powerupsExpire,canAcceptPowerups=canAcceptPowerups,cooldownTime=cooldownTime,superpower=superpower,bombCount=bombCount,hitPointsMax=hitPointsMax,hitPoints=hitPoints,shieldHitPointsMax=shieldHitPointsMax)
 
         self.lastPlayerAttackedBy = None # FIXME - should use empty player ref
         self.lastAttackedTime = 0
@@ -2151,6 +2698,18 @@ class PlayerSpaz(Spaz):
             pickedUpBy = m.node.sourcePlayer
             if pickedUpBy is not None and pickedUpBy.exists():
                 self.lastPlayerHeldBy = pickedUpBy
+                pickedUpActor = pickedUpBy.actor
+                if pickedUpActor.hasSuperpower('shield'):
+                    try: player = bs.PlayerSpaz.getPlayer(self)
+                    except Exception: player = None
+                    if pickedUpActor.shield != None:
+                        self.equipShields(player)
+                        self.shieldHitPoints = pickedUpActor.shieldHitPoints
+                        self.shieldHitPointsMax = pickedUpActor.shieldHitPointsMax
+                        self.shield.hurt = pickedUpActor.shield.hurt
+                        pickedUpActor.shield.delete()
+                        pickedUpActor.shield = None
+                        pickedUpActor.shieldsup(helpBonus=True)
 
         elif isinstance(m,bs.DroppedMessage):
             self.__superHandleMessage(m) # augment standard behavior
@@ -2202,6 +2761,10 @@ class PlayerSpaz(Spaz):
                 # only report if both the player and the activity still exist
                 if killed and activity is not None and self.getPlayer().exists():
                     activity.handleMessage(PlayerSpazDeathMessage(self, killed, killerPlayer, m.how))
+                    if killerPlayer != None and killerPlayer.exists():
+                        killerActor = killerPlayer.actor
+                        if self.superpower != None and killerActor.superpower == 'absorb':
+                            killerActor.absorb(self.superpower, self.cooldownTime if self.superpower != 'shield' else self.reshieldtime)
 
             self.__superHandleMessage(m) # augment standard behavior
 
@@ -2388,6 +2951,55 @@ class SpazBot(Spaz):
     to the current activity.
     """
 
+    # jasonhu5
+    isBotFriendly = False
+    _player = None
+    _spaz = None
+    #
+
+     # jasonhu5
+    def getPlayer(self):
+        return self._player
+
+    def connectControlsToPlayer(self,player,spaz=None,enableJump=True,enablePunch=True,enablePickUp=True,enableBomb=True,enableRun=True,enableFly=True):
+        """
+        Wire this spaz up to the provided bs.Player.
+        Full control of the character is given by default
+        but can be selectively limited by passing False
+        to specific arguments.
+        """
+
+        player.resetInput()
+        self._player = player
+        self._spaz = spaz
+
+        # reset any currently connected player and/or the player we're now wiring up
+
+        player.assignInputCall('upDown',self.onMoveUpDown)
+        player.assignInputCall('leftRight',self.onMoveLeftRight)
+        player.assignInputCall('holdPositionPress',self._onHoldPositionPress)
+        player.assignInputCall('holdPositionRelease',self._onHoldPositionRelease)
+
+        if enableJump:
+            player.assignInputCall('jumpPress',self.onJumpPress)
+            player.assignInputCall('jumpRelease',self.onJumpRelease)
+        if enablePickUp:
+            player.assignInputCall('pickUpPress',self.onPickUpPress)
+            player.assignInputCall('pickUpRelease',self.onPickUpRelease)
+        if enablePunch:
+            player.assignInputCall('punchPress',self.onPunchPress)
+            player.assignInputCall('punchRelease',self.onPunchRelease)
+        if enableBomb:
+            player.assignInputCall('bombPress',self.onBombPress)
+            player.assignInputCall('bombRelease',self.onBombRelease)
+        if enableRun:
+            player.assignInputCall('run',self.onRun)
+        if enableFly:
+            player.assignInputCall('flyPress',self.onFlyPress)
+            player.assignInputCall('flyRelease',self.onFlyRelease)
+
+        # self._connectedToPlayer = player
+    #
 
     character = 'Spaz'
     punchiness = 0.5
@@ -2468,6 +3080,20 @@ class SpazBot(Spaz):
         """
         Should be called periodically to update the spaz' AI
         """
+
+        # jasonhu5
+        if self.isBotFriendly:
+            if self.run:
+                self._leadAmount = 0.3
+                self._running = True
+                self.node.run = 1.0
+            else:
+                self._leadAmont = 0.01
+                self._running = False
+                self.node.run = 0.0
+
+            return
+        #
 
         if self.updateCallback is not None:
             if self.updateCallback(self) == True:
@@ -2767,6 +3393,12 @@ class SpazBot(Spaz):
 
                 if killerPlayer is not None and not killerPlayer.exists(): killerPlayer = None
                 if activity is not None: activity.handleMessage(SpazBotDeathMessage(self,killerPlayer,m.how))
+
+                # Bacon added Begin
+                if self.isBotFriendly:
+                    if self._spaz.node.exists():
+                        self._spaz.connectControlsToPlayer(self._player)
+                # Bacon Added End
             self.__superHandleMessage(m) # augment standard behavior
 
         # keep track of the player who last hit us for point rewarding
@@ -2778,6 +3410,21 @@ class SpazBot(Spaz):
             self.__superHandleMessage(m)
         else:
             Spaz.handleMessage(self,m)
+
+# jasonhu5
+class SuicideBomber(SpazBot):
+    character = 'Snake Shadow'
+    run = True
+    chargeDistMin = 0.0
+    chargeDistMax = 9999
+    chargeSpeedMin = 1.0
+    chargeSpeedMax = 1.0
+    throwDistMin = 9999
+    throwDistMax = 9999
+    startCursed = True
+    pointsMult = 3
+    isBotFriendly = True
+#
 
 class BunnyBot(SpazBot):
     """

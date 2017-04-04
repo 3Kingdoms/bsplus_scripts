@@ -144,6 +144,9 @@ class BombFactory(object):
         self.knockerBombModel = bs.getModel('bombKnocker')
         self.shockwaveBombModel = bs.getModel('bombRanger')
         self.flyingBombModel = bs.getModel('bombRanger')
+        self.laserBombModel = bs.getModel('bombRanger')
+        self.trackerBombModel = bs.getModel('bombRanger')
+        self.invincibleBombModel = bs.getModel('bombHealing')
 
         self.regularTex = bs.getTexture('bombColor')
         self.iceTex = bs.getTexture('bombColorIce')
@@ -163,6 +166,9 @@ class BombFactory(object):
         self.knockerTex = bs.getTexture('bombKnockerColor')
         self.shockwaveTex = bs.getTexture('bombColorIce')
         self.flyingTex = bs.getTexture('bombColorIce')
+        self.laserTex = bs.getTexture('bombColorIce')
+        self.trackerTex = bs.getTexture('bombColorIce')
+        self.invincibleTex = bs.getTexture('bombRangerColor')
 
         # Grenade Textres
         self.grenade3Tex = bs.getTexture('grenadeColor3') # 3 second fuse
@@ -180,6 +186,8 @@ class BombFactory(object):
         self.hijumpSound = bs.getSound('hijump')
         self.dynamiteFuseSound = bs.getSound('fuseDynamite')
         self.shockwaveSound = bs.getSound('crystalExplosion')
+        self.trackerSound = bs.getSound('crystalExplosion')
+        self.invincibleSound = bs.getSound('crystalExplosion')
 
         # Combat Bomb sounds
         self.combatBombDeployedSound = bs.getSound('combatBombDeployed')
@@ -214,12 +222,18 @@ class BombFactory(object):
         # set up our material so new bombs dont collide with objects
         # that they are initially overlapping
         self.bombMaterial = bs.Material()
+        self.slippybombMaterial = bs.Material()
         self.normalSoundMaterial = bs.Material()
         self.crystalSoundMaterial = bs.Material()
         self.basketballSoundMaterial = bs.Material()
         self.stickyMaterial = bs.Material()
 
         self.bombMaterial.addActions(
+            conditions=((('weAreYoungerThan',100),'or',('theyAreYoungerThan',100)),
+                        'and',('theyHaveMaterial',bs.getSharedObject('objectMaterial'))),
+            actions=(('modifyNodeCollision','collide',False)))
+
+        self.slippybombMaterial.addActions(
             conditions=((('weAreYoungerThan',100),'or',('theyAreYoungerThan',100)),
                         'and',('theyHaveMaterial',bs.getSharedObject('objectMaterial'))),
             actions=(('modifyNodeCollision','collide',False)))
@@ -231,6 +245,12 @@ class BombFactory(object):
             actions=(('modifyPartCollision','useNodeCollide',False)))
 
         self.bombMaterial.addActions(actions=('modifyPartCollision','friction',0.3))
+
+        self.slippybombMaterial.addActions(
+            conditions=('theyHaveMaterial',bs.getSharedObject('pickupMaterial')),
+            actions=(('modifyPartCollision','useNodeCollide',False)))
+
+        self.slippybombMaterial.addActions(actions=('modifyPartCollision','friction',0.003))
 
         self.landMineNoExplodeMaterial = bs.Material()
         self.landMineBlastMaterial = bs.Material()
@@ -376,10 +396,10 @@ class Blast(bs.Actor):
                                       'velocity':(velocity[0],max(-1.0,velocity[1]),velocity[2]),
                                       'radius':self.radius,
                                       'big':(self.blastType == 'tnt' or self.blastType == 'ranger' or self.blastType == 'grenade')})
-        if self.blastType == "ice":
+        if self.blastType == "ice" or self.blastType == 'superice':
             explosion.color = (0,0.05,0.4)
 
-        if self.blastType == "fire":
+        if self.blastType == "fire" or self.blastType == 'superfire':
             explosion.color = (1.25,0.8,0.8)
 
         if self.blastType == "ranger":
@@ -409,8 +429,17 @@ class Blast(bs.Actor):
         if self.blastType == "shockwave":
             explosion.color = (0,0,0)
 
-        if self.blastType != 'ice': bs.emitBGDynamics(position=position,velocity=velocity,count=int(1.0+random.random()*4),emitType='tendrils',tendrilType='thinSmoke')
-        if self.blastType != 'combat' and self.blastType != 'knocker' and self.blastType != 'shockwave' and self.blastType != 'flying': bs.emitBGDynamics(position=position,velocity=velocity,count=int(4.0+random.random()*4),emitType='tendrils',tendrilType='ice' if self.blastType == 'ice' else 'smoke')
+        if self.blastType == "laser":
+            explosion.color = (1,0,0)
+
+        if self.blastType == "tracker":
+            explosion.color = (0.5,0.5,0.5)
+
+        if self.blastType == "invincible":
+            explosion.color = (1,0.8431,0)
+
+        if self.blastType != 'ice' and self.blastType != 'shockwave' and self.blastType != 'flying' and self.blastType != 'laser' and self.blastType != 'superice' and self.blastType != 'superfire': bs.emitBGDynamics(position=position,velocity=velocity,count=int(1.0+random.random()*4),emitType='tendrils',tendrilType='thinSmoke')
+        if self.blastType != 'combat' and self.blastType != 'knocker' and self.blastType != 'shockwave' and self.blastType != 'flying' and self.blastType != 'laser': bs.emitBGDynamics(position=position,velocity=velocity,count=int(4.0+random.random()*4),emitType='tendrils',tendrilType='ice' if self.blastType == 'ice' or self.blastType == 'superice' else 'smoke')
         bs.emitBGDynamics(position=position,emitType='distortion',spread=1.0 if self.blastType == 'tnt' else 2.0)
 
         # and emit some shrapnel..
@@ -469,7 +498,7 @@ class Blast(bs.Actor):
                 bs.emitBGDynamics(position=position,velocity=velocity,count=int(8.0+random.random()*20),scale=0.3,spread=3.0,chunkType='spark');
             bs.gameTimer(50,_doEmit) # looks better if we delay a bit
 
-        elif self.blastType == 'healing': # regular bomb shrapnel
+        elif self.blastType == 'healing' or self.blastType == 'invincible': # regular bomb shrapnel
             def _doEmit():
                 bs.emitBGDynamics(position=position,emitType='distortion',spread=1.5);
                 bs.emitBGDynamics(position=position,emitType='distortion',spread=2.0);
@@ -492,8 +521,15 @@ class Blast(bs.Actor):
                 bs.emitBGDynamics(position=position,velocity=velocity,count=int(6.0+random.random()*30),scale=0.5,chunkType='rock');
             bs.gameTimer(50,_doEmit)
 
-        elif self.blastType == 'shockwave' or self.blastType == 'flying': # we do not want the shockwave to emit anything
+        elif self.blastType == 'shockwave' or self.blastType == 'flying' or self.blastType == 'laser' or self.blastType == 'superice' or self.blastType == 'superfire': # we do not want the shockwave to emit anything
             pass
+        elif self.blastType == 'tracker':
+            def _doEmit():
+                bs.emitBGDynamics(position=position,velocity=velocity,count=int(4.0+random.random()*20),scale=1.5,chunkType='spark');
+                bs.emitBGDynamics(position=position,velocity=velocity,count=int(4.0+random.random()*20),scale=1.2,chunkType='spark');
+                bs.emitBGDynamics(position=position,velocity=velocity,count=50,scale=0.7,chunkType='spark',emitType='stickers');
+                bs.emitBGDynamics(position=position,velocity=velocity,count=int(8.0+random.random()*45),scale=1.0,spread=3,chunkType='spark');
+            bs.gameTimer(50,_doEmit)
         else: # regular or land mine bomb shrapnel
             def _doEmit():
                 if self.blastType != 'tnt' and self.blastType != 'miniDynamite':
@@ -557,11 +593,36 @@ class Blast(bs.Actor):
                            attrs={'position':position,
                                   'color': (0,0,0),
                                   'volumeIntensityScale': 0})
+        elif self.blastType == 'laser':
+            light = bs.newNode('light',
+                           attrs={'position':position,
+                                  'color': (0,0,0),
+                                  'volumeIntensityScale': 0})
         elif self.blastType == 'flying':
             light = bs.newNode('light',
                            attrs={'position':position,
                                   'color': (0,0,0),
                                   'volumeIntensityScale': 0})
+        elif self.blastType == 'tracker':
+            light = bs.newNode('light',
+                           attrs={'position':position,
+                                  'color': (0.4,0.6,1),
+                                  'volumeIntensityScale': 10.0})
+        elif self.blastType == 'invincible':
+            light = bs.newNode('light',
+                           attrs={'position':position,
+                                  'color': (1,0.8431,0),
+                                  'volumeIntensityScale': 10.0})
+        elif self.blastType == 'superice':
+            light = bs.newNode('light',
+                           attrs={'position':position,
+                                  'color': (0.6,0.6,1.0),
+                                  'volumeIntensityScale': 10.0})
+        elif self.blastType == 'superfire':
+            light = bs.newNode('light',
+                           attrs={'position':position,
+                                  'color': (1.25,0.8,0.8),
+                                  'volumeIntensityScale': 10.0})
         else:
             light = bs.newNode('light',
                            attrs={'position':position,
@@ -587,6 +648,10 @@ class Blast(bs.Actor):
             lightRadius *= 0
             scorchRadius *= 0
             s *= 0
+        elif self.blastType == 'laser':
+            lightRadius *= 100
+            scorchRadius *= 0
+            s *= 0.001
 
         iScale = 1.6
         bsUtils.animate(light,"intensity",{0:2.0*iScale, int(s*20):0.1*iScale, int(s*25):0.2*iScale, int(s*50):17.0*iScale, int(s*60):5.0*iScale, int(s*80):4.0*iScale, int(s*200):0.6*iScale, int(s*2000):0.00*iScale, int(s*3000):0.0})
@@ -596,32 +661,38 @@ class Blast(bs.Actor):
         # make a scorch that fades over time
         scorch = bs.newNode('scorch',
                         attrs={'position':position,'size':scorchRadius*0.5,'big':(self.blastType == 'tnt' or self.blastType == 'ranger' or self.blastType == 'grenade')})
-        if self.blastType == 'ice':
+        if self.blastType == 'ice' or self.blastType == 'superice':
             scorch.color = (1,1,1.5)
 
-        if self.blastType == 'fire':
+        elif self.blastType == 'fire':
             scorch.color = (1.25,0.95,0.95)
 
-        if self.blastType == 'ranger':
+        elif self.blastType == 'superfire':
+            scorch.color = (0.625,0.475,0.475)
+
+        elif self.blastType == 'ranger':
             scorch.color = (2,2,2)
 
-        if self.blastType == 'hijump':
+        elif self.blastType == 'hijump':
             scorch.color = (0.7,0.05,0.65)
 
-        if self.blastType == 'healing':
+        elif self.blastType == 'healing':
             scorch.color = (2,1.73,2)
 
-        if self.blastType == 'tnt':
+        elif self.blastType == 'tnt':
             scorch.color = (0.4,0.7,0.4)
 
-        if self.blastType == 'fire':
+        elif self.blastType == 'invincible':
+            scorch.color = (1,0.8431,0)
+
+        if self.blastType == 'fire' or self.blastType == 'superice' or self.blastType == 'superfire':
             bsUtils.animate(scorch,"presence",{3000:2, 5000:1.5, 5150:0.5, 8000:0})
             bs.gameTimer(8000,scorch.delete)
         else:
             bsUtils.animate(scorch,"presence",{3000:1, 13000:0})
             bs.gameTimer(13000,scorch.delete)
 
-        if self.blastType == 'ice':
+        if self.blastType == 'ice' or self.blastType == 'superice':
             bs.playSound(factory.hissSound,position=light.position)
 
         if self.blastType == 'ranger':
@@ -641,6 +712,8 @@ class Blast(bs.Actor):
             bs.playSound(factory.shockwaveSound,position=p)
         elif self.blastType == 'grenade':
             bs.playSound(factory.getRandomGrenadeSound(),volume=1.0,position=p)
+        elif self.blastType == 'tracker':
+            bs.playSound(factory.trackerSound,position=p)
         elif self.blastType == 'hijump':
             bs.playSound(factory.hijumpSound,volume=2.0,position=p)
         else:
@@ -665,8 +738,18 @@ class Blast(bs.Actor):
                 bs.shakeCamera(intensity=0.75)
             elif self.blastType == 'flying':
                 bs.shakeCamera(intensity=0.0)
+            elif self.blastType == 'superice':
+                bs.shakeCamera(intensity=0.0)
+            elif self.blastType == 'superfire':
+                bs.shakeCamera(intensity=0.0)
             elif self.blastType == 'shockwave':
                 bs.shakeCamera(intensity=0.0)
+            elif self.blastType == 'laser':
+                bs.shakeCamera(intensity=0.0)
+            elif self.blastType == 'tracker':
+                bs.shakeCamera(intensity=0.15)
+            elif self.blastType == 'invincible':
+                bs.shakeCamera(intensity=0.35)
             else:
                 if self.blastType != 'miniDynamite':
                     bs.shakeCamera(intensity=5.0 if self.blastType == 'tnt' else 1.0)
@@ -713,7 +796,12 @@ class Blast(bs.Actor):
                 elif self.blastType == 'healing': mag *= 0.0
                 elif self.blastType == 'hijump': mag *= 1.0
                 elif self.blastType == 'shockwave' : mag *= 1.5
-                elif self.blastType == 'flying': mag *= 0.1
+                elif self.blastType == 'flying': mag *= 0
+                elif self.blastType == 'laser': mag *= 0.05
+                elif self.blastType == 'tracker': mag *= 0.4
+                elif self.blastType == 'invincible': mag *= 0
+                elif self.blastType == 'superice': mag *= 0.3
+                elif self.blastType == 'superfire': mag *= 0.1
 
                 node.handleMessage(bs.HitMessage(pos=t,
                                                     velocity=(0,0,0),
@@ -722,16 +810,24 @@ class Blast(bs.Actor):
                                                     hitSubType=self.hitSubType,
                                                     radius=self.radius,
                                                     sourcePlayer=self.sourcePlayer))
-                if self.blastType == "ice":
+                if self.blastType == "ice" or self.blastType == "superice":
                     bs.playSound(Bomb.getFactory().freezeSound,10,position=t)
                     node.handleMessage(bs.FreezeMessage())
 
-                if self.blastType == "fire":
+                if self.blastType == "fire" or self.blastType == "superfire":
                     bs.playSound(Bomb.getFactory().fireSound,10,position=t)
+                    node.handleMessage(bs.BurnMessage())
 
                 if self.blastType == "healing":
                     bs.playSound(Bomb.getFactory().healingSound,6,position=t)
                     node.handleMessage(bs.HealMessage())
+
+                if self.blastType == "tracker":
+                    node.handleMessage(bs.TrackMessage(self.sourcePlayer))
+
+                if self.blastType == "invincible":
+                    bs.playSound(Bomb.getFactory().healingSound,10,position=t)
+                    node.handleMessage(bs.InvincibleMessage())
 
         else:
             bs.Actor.handleMessage(self,m)
@@ -755,7 +851,7 @@ class Bomb(bs.Actor):
 
         factory = self.getFactory()
 
-        if not bombType in ('ice','impact','landMine','normal','sticky','ranger','tnt','combat','knocker','shockwave','flying','dynamite','miniDynamite','fire','healing','curse','grenade','hijump','basketball'): raise Exception("invalid bomb type: " + bombType)
+        if not bombType in ('ice','impact','landMine','normal','sticky','ranger','tnt','combat','knocker','dynamite','miniDynamite','fire','healing','curse','grenade','hijump','basketball','shockwave','flying','laser','tracker','invincible','superice','superfire'): raise Exception("invalid bomb type: " + bombType)
         self.bombType = bombType
 
         self._exploded = False
@@ -777,8 +873,13 @@ class Bomb(bs.Actor):
         elif self.bombType == 'healing': self.blastRadius *= 1.2
         elif self.bombType == 'grenade': self.blastRadius *= 1.45
         elif self.bombType == 'hijump': self.blastRadius *= 0.75
-        elif self.bombType == 'shockwave' : self.blastRadius *= 1.40
+        elif self.bombType == 'shockwave' : self.blastRadius *= 1.20
         elif self.bombType == 'flying' : self.blastRadius *= 0.0
+        elif self.bombType == 'laser': self.blastRadius *= 0.2
+        elif self.bombType == 'tracker': self.blastRadius *= 0.75
+        elif self.bombType == 'invincible': self.blastRadius *= 1.2
+        elif self.bombType == 'superice': self.blastRadius *= 2
+        elif self.bombType == 'superfire': self.blastRadius *= 2
 
 
         self._explodeCallbacks = []
@@ -805,7 +906,7 @@ class Bomb(bs.Actor):
         else:
             materials = (factory.bombMaterial, bs.getSharedObject('objectMaterial'))
 
-        if self.bombType == 'impact' or self.bombType == 'healing': materials = materials + (factory.impactBlastMaterial,)
+        if self.bombType == 'impact' or self.bombType == 'healing' or self.bombType == 'tracker' or self.bombType == 'invincible' : materials = materials + (factory.impactBlastMaterial,)
         elif self.bombType == 'landMine': materials = materials + (factory.landMineNoExplodeMaterial,)
 
         if self.bombType == 'sticky': materials = materials + (factory.stickyMaterial,)
@@ -873,6 +974,19 @@ class Bomb(bs.Actor):
                                           'materials':materials})
             self.armTimer = bs.Timer(200,bs.WeakCall(self.handleMessage,ArmMessage()))
             self.warnTimer = bs.Timer(fuseTime-1700,bs.WeakCall(self.handleMessage,WarnMessage()))
+        elif self.bombType == 'tracker':
+            fuseTime = 10000
+            self.node = bs.newNode('prop',
+                                   delegate=self,
+                                   attrs={'position':position,
+                                          'velocity':velocity,
+                                          'body':'sphere',
+                                          'model':factory.trackerBombModel,
+                                          'shadowSize':0.3,
+                                          'colorTexture':factory.trackerTex,
+                                          'reflection':'powerup',
+                                          'reflectionScale':[1.5],
+                                          'materials':materials})
         elif self.bombType == 'hijump':
             fuseTime = 1
             self.node = bs.newNode('prop',
@@ -897,6 +1011,21 @@ class Bomb(bs.Actor):
                                           'model':factory.healingBombModel,
                                           'shadowSize':0.3,
                                           'colorTexture':factory.healingTex,
+                                          'reflection':'powerup',
+                                          'reflectionScale':[1.8],
+                                          'materials':materials})
+            self.deployedTimer = bs.Timer(1,bs.WeakCall(self.handleMessage,DeployMessage()))
+
+        elif self.bombType == 'invincible':
+            fuseTime = 5000
+            self.node = bs.newNode('prop',
+                                   delegate=self,
+                                   attrs={'position':position,
+                                          'velocity':velocity,
+                                          'body':'sphere',
+                                          'model':factory.invincibleBombModel,
+                                          'shadowSize':0.3,
+                                          'colorTexture':factory.invincibleTex,
                                           'reflection':'powerup',
                                           'reflectionScale':[1.8],
                                           'materials':materials})
@@ -970,10 +1099,23 @@ class Bomb(bs.Actor):
                 model = factory.knockerBombModel
                 rType = 'powerup'
                 rScale = 0.35
+            elif self.bombType == 'dynamite':
+                fuseTime = 3000
+                sticky = False
+                model = factory.dynamiteModel
+                rType = 'sharper'
+                rScale = 0.8
+                self.deployedTimer = bs.Timer(1,bs.WeakCall(self.handleMessage,DeployMessage()))
             elif self.bombType == 'shockwave':
-                fuseTime = 1
+                fuseTime = 0
                 sticky = False
                 model = factory.shockwaveBombModel
+                rType = 'powerup'
+                rScale = 0.001
+            elif self.bombType == 'laser':
+                fuseTime = 0
+                sticky = False
+                model = factory.laserBombModel
                 rType = 'powerup'
                 rScale = 0.001
             elif self.bombType == 'flying':
@@ -982,13 +1124,12 @@ class Bomb(bs.Actor):
                 model = factory.flyingBombModel
                 rType = 'powerup'
                 rScale = 0.001
-            elif self.bombType == 'dynamite':
-                fuseTime = 3000
+            elif self.bombType == 'superice' or self.bombType == 'superfire':
+                fuseTime = 0
                 sticky = False
-                model = factory.dynamiteModel
+                model = factory.bombModel
                 rType = 'sharper'
-                rScale = 0.8
-                self.deployedTimer = bs.Timer(1,bs.WeakCall(self.handleMessage,DeployMessage()))
+                rScale = 1.8
             else:
                 sticky = False
                 model = factory.bombModel
@@ -1000,9 +1141,10 @@ class Bomb(bs.Actor):
             elif self.bombType == 'fire': tex = factory.fireTex
             elif self.bombType == 'ranger': tex = factory.rangerTex
             elif self.bombType == 'knocker': tex = factory.knockerTex
+            elif self.bombType == 'basketball': tex = factory.basketballTex
             elif self.bombType == 'shockwave': tex = factory.shockwaveTex
             elif self.bombType == 'flying': tex = factory.flyingTex
-            elif self.bombType == 'basketball': tex = factory.basketballTex
+            elif self.bombType == 'laser': tex = factory.laserTex
             # Curse bomb doesn't exist, but it's only used for the explosion. I'm gonna add the texture anyway.
             else: tex = factory.regularTex
             self.node = bs.newNode('bomb',
@@ -1067,6 +1209,10 @@ class Bomb(bs.Actor):
                 (node is self.owner or (isinstance(nodeDelegate,Bomb) and nodeDelegate.bombType == 'impact' and nodeDelegate.owner is self.owner))): return
             elif (self.bombType == 'healing' and
                 (node is self.owner or (isinstance(nodeDelegate,Bomb) and nodeDelegate.bombType == 'healing' and nodeDelegate.owner is self.owner))): return
+            elif (self.bombType == 'tracker' and
+                (node is self.owner or (isinstance(nodeDelegate,Bomb) and nodeDelegate.bombType == 'tracker' and nodeDelegate.owner is self.owner))): return
+            elif (self.bombType == 'invincible' and
+                (node is self.owner or (isinstance(nodeDelegate,Bomb) and nodeDelegate.bombType == 'invincible' and nodeDelegate.owner is self.owner))): return
             else: self.handleMessage(ExplodeMessage())
 
     def _handleDropped(self,m):
@@ -1104,6 +1250,8 @@ class Bomb(bs.Actor):
             activity = self.getActivity()
             if self.bombType == 'healing':
                 bs.playSound(self.getFactory().healingSound,6,position=self.node.position)
+            if self.bombType == 'invincible':
+                bs.playSound(self.getFactory().healingSound,10,position=self.node.position)
             if activity is not None and self.node.exists():
                 if self.bombType == 'dynamite':
                     blast = Blast(position=self.node.position,velocity=self.node.velocity,
@@ -1126,24 +1274,55 @@ class Bomb(bs.Actor):
                     self.b4 = bs.Bomb(position=(t[0]-4, t[1], t[2]),velocity=(0,2,0),bombType='miniDynamite',sourcePlayer=self.sourcePlayer)
                     self.c4 = bs.Bomb(position=(t[0], t[1], t[2]+4),velocity=(0,2,0),bombType='miniDynamite',sourcePlayer=self.sourcePlayer)
                     self.d4 = bs.Bomb(position=(t[0], t[1], t[2]-4),velocity=(0,2,0),bombType='miniDynamite',sourcePlayer=self.sourcePlayer)
-                elif self.bombType == 'fire': # Fire bomb creates a fire splat
-                    factory = self.getFactory()
+                elif self.bombType == 'fire' or self.bombType == 'superfire': # Fire bomb creates a fire splat
                     blast = Blast(position=self.node.position,velocity=self.node.velocity,
                             blastRadius=self.blastRadius,blastType=self.bombType,sourcePlayer=self.sourcePlayer,hitType=self.hitType,hitSubType=self.hitSubType).autoRetain()
                     for c in self._explodeCallbacks: c(self,blast)
-                    print 'Working!'
                     self.fireLight = bs.newNode('light',
                             attrs={'position':self.node.position,
                                     'color': (0.5,0.5,0),
+                                    'radius': 1 if self.bombType == 'fire' else self.blastRadius,
                                     'volumeIntensityScale': 1.0})
                     bs.animate(self.fireLight,'intensity',{0:0,250:2.0,5000:1.8, 5250:0.5, 8000:0},loop=False)
+                    self.fireMaterial = bs.Material()
+                    self.fireMaterial.addActions(
+                         conditions=("theyHaveMaterial",bs.getSharedObject('objectMaterial')),
+                         actions=(("modifyPartCollision","collide",True),
+                                  ("modifyPartCollision","physical",False),
+                                  ('message','theirNode','atConnect',bs.BurnMessage())))
+
                     self.fireAttack = bs.newNode('region',
                                 attrs={'position':(self.node.position[0],self.node.position[1]-0.1,self.node.position[2]), # move down and squished a bit so the fire affects the floor
                                         'scale':(self.blastRadius,self.blastRadius,self.blastRadius*0.25),
                                         'type':'sphere',
-                                        'materials':(factory.blastMaterial,bs.getSharedObject('attackMaterial'))},
+                                        'materials':(self.fireMaterial,bs.getSharedObject('attackMaterial'))},
                                 delegate=self)
                     bs.gameTimer(5000,self.fireAttack.delete)
+                elif self.bombType == 'ice' or self.bombType == 'superice':
+                    blast = Blast(position=self.node.position,velocity=self.node.velocity,
+                                blastRadius=self.blastRadius,blastType=self.bombType,sourcePlayer=self.sourcePlayer,hitType=self.hitType,hitSubType=self.hitSubType).autoRetain()
+                    for c in self._explodeCallbacks: c(self,blast)
+                    self.iceLight = bs.newNode('light',
+                            attrs={'position':self.node.position,
+                                    'color': (0,0.05,0.4),
+                                    'radius':self.blastRadius,
+                                    'volumeIntensityScale': 1.0})
+                    bs.animate(self.iceLight,'intensity',{0:0,250:2.0,5000:1.8, 5250:0.5, 8000:0},loop=False)
+                    self.iceMaterial = bs.Material()
+                    self.iceMaterial.addActions(
+                         conditions=(('theyAreDifferentNodeThanUs',),'and',('theyHaveMaterial',bs.getSharedObject('objectMaterial'))),
+                         actions=(("modifyPartCollision","collide",True),
+                                  ("modifyPartCollision","physical",False),
+                                  ('message','theirNode','atConnect',bs.HockeyStartMessage()),
+                                  ('message','theirNode','atDisconnect',bs.HockeyEndMessage()),
+                                  ))
+                    self.iceRegion = bs.newNode('region',
+                                attrs={'position':(self.node.position[0],self.node.position[1]-0.1 ,self.node.position[2]), # move a bit so the ice affects the floor
+                                        'scale':(self.blastRadius,self.blastRadius,self.blastRadius*0.25),
+                                        'type':'sphere',
+                                        'materials':(self.iceMaterial,bs.getSharedObject('attackMaterial'))},
+                                delegate=self)
+                    bs.gameTimer(5000,self.iceRegion.delete)
                 elif self.bombType == 'hijump':
                     blast = Blast(position=(self.node.position[0],self.node.position[1]-0.95,self.node.position[2]),velocity=self.node.velocity,
                             blastRadius=self.blastRadius,blastType=self.bombType,sourcePlayer=self.sourcePlayer,hitType=self.hitType,hitSubType=self.hitSubType).autoRetain()
@@ -1373,6 +1552,23 @@ class Bomb(bs.Actor):
         elif isinstance(m,bs.HealMessage): self.dissolve()
         elif isinstance(m,ReadyMessage): self.ready()
         elif isinstance(m,DeployMessage): self.deploy()
+        elif isinstance(m,bs.BurnMessage): self.explode()
+        elif isinstance(m,bs.HockeyStartMessage):
+            if not self.node.exists(): return
+            factory = self.getFactory()
+            materials = getattr(self.node,'materials')
+            setattr(self.node,'materials',tuple(
+                m if m!=factory.bombMaterial
+                else factory.slippybombMaterial
+                for m in materials))
+        elif isinstance(m,bs.HockeyEndMessage):
+            if not self.node.exists(): return
+            factory = self.getFactory()
+            materials = getattr(self.node,'materials')
+            setattr(self.node,'materials',tuple(
+                m if m!=factory.slippybombMaterial
+                else factory.bombMaterial
+                for m in materials))
         else: bs.Actor.handleMessage(self,m)
 
 class TNTSpawner(object):
