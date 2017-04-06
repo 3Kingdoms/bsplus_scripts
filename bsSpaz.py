@@ -4896,6 +4896,34 @@ t.pickupSounds = agentSounds
 t.fallSounds=["agentFall"]
 t.style = 'agent'
 
+
+# Hulk
+t = Appearance("Hulk")
+t.colorTexture = "hulkColor"
+t.colorMaskTexture = "hulkColorMask"
+t.defaultColor = (1,0,0)
+t.defaultHighlight = (1,0.7,0.0)
+t.iconTexture = "hulkIcon"
+t.iconMaskTexture = "hulkIconColorMask"
+t.headModel =     "hulkHead"
+t.torsoModel =    "hulkTorso"
+t.pelvisModel =   "zero"
+t.upperArmModel = "hulkUpperArm"
+t.foreArmModel =  "hulkForeArm"
+t.handModel =     "zero"
+t.upperLegModel = "zero"
+t.lowerLegModel = "hulkLowerLeg"
+t.toesModel =     "zero"
+agentSounds =    ['agent1','agent2','agent3','agent4']
+agentHitSounds = ['agentHit1','agentHit2']
+t.attackSounds = agentSounds
+t.jumpSounds = agentSounds
+t.impactSounds = agentHitSounds
+t.deathSounds=["agentDeath"]
+t.pickupSounds = agentSounds
+t.fallSounds=["agentFall"]
+t.style = 'agent'
+
 # Yue End #
 
 # Klayman - WORK IN PROGRESS###################################
